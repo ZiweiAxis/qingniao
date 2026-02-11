@@ -1,6 +1,6 @@
 {
   "name": "skill-message-bridge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AI 智能体的消息桥梁，连接飞书/钉钉/企微，实现异步通知与确认",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -39,7 +39,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hulk-yin/message-bridge.git"
+    "url": "git+https://github.com/hulk-yin/message-bridge.git"
   },
   "homepage": "https://github.com/hulk-yin/message-bridge#readme",
   "dependencies": {
