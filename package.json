@@ -1,0 +1,37 @@
+{
+  "name": "skill-message-bridge",
+  "version": "0.1.0",
+  "description": "AI 智能体的消息桥梁，连接飞书/钉钉/企微，实现异步通知与确认",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "test": "node test.js",
+    "conversation": "node feishu-conversation.js",
+    "build:dist": "node scripts/copy-to-dist.js",
+    "turn": "node dist/feishu-turn.js"
+  },
+  "keywords": [
+    "message-bridge",
+    "feishu",
+    "dingtalk",
+    "wecom",
+    "ai-agent",
+    "notification"
+  ],
+  "author": "7号智创",
+  "license": "MIT",
+  "dependencies": {
+    "@larksuiteoapi/lark-mcp": "^0.5.0",
+    "@larksuiteoapi/node-sdk": "^1.58.0",
+    "node-fetch": "^2.7.0",
+    "ws": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/ws": "^8.0.0",
+    "ts-node": "^10.0.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,0 +1,112 @@
+# MessageBridge
+
+AI 智能体的多渠道消息桥梁，实现「发消息」与「等回复」，支持与 AI 对话闭环。**当前已实现飞书；钉钉、企微等欢迎社区共建。**
+
+A multi-channel message bridge for AI agents: send messages and wait for replies. **Feishu is implemented; DingTalk, WeCom, etc. welcome community contributions.**
+
+---
+
+## 如何对接不同渠道 / Supported Channels
+
+| 渠道 Channel | 状态 Status | 说明 |
+|-------------|-------------|------|
+| 飞书 Feishu | ✅ 已实现 | 需配置 `FEISHU_APP_ID` / `FEISHU_APP_SECRET` / `FEISHU_CHAT_ID`（或 `DITING_FEISHU_*`），长连接收消息。 |
+| 钉钉 DingTalk | 📌 待共建 | 接口形态类似：发消息 + 收回复；接入步骤见 [CONTRIBUTING.md](./CONTRIBUTING.md#二新渠道接入--adding-a-new-channel)。 |
+| 企微 WeCom | 📌 待共建 | 同上，欢迎按 CONTRIBUTING 清单提交适配。 |
+
+扩展新渠道：在 `src/platforms/` 增加适配器并实现「发消息 + 将用户回复回填到队列」，详见 [CONTRIBUTING](./CONTRIBUTING.md)。
+
+---
+
+## 参与共建 / Community
+
+欢迎补全其它 IM 渠道、补全文档与单测、或改进现有实现。请阅读 [CONTRIBUTING.md](./CONTRIBUTING.md)，按「新渠道接入」清单或「贡献流程」提 PR；**欢迎 AI 按文档参与贡献**（见 CONTRIBUTING「给 AI 贡献者」）。
+
+---
+
+## 快速开始 / Quick Start
+
+```bash
+# 1. 安装依赖
+npm install
+
+# 2. 配置环境变量（飞书示例，请替换为你的应用与群聊 ID）
+export FEISHU_APP_ID="your_app_id"
+export FEISHU_APP_SECRET="your_app_secret"
+export FEISHU_CHAT_ID="oc_xxx"
+
+# 3. 构建（若改过 src）
+npm run build:dist
+
+# 4. 运行测试
+node test-quick.js
+```
+
+## 功能特性
+
+✅ **消息发送** - 发送消息到飞书群聊  
+✅ **等待回复** - 发送消息并等待用户回复  
+✅ **实时接收** - WebSocket 长链接实时接收消息  
+✅ **超时处理** - 可配置超时时间  
+✅ **任务队列** - 支持多任务管理  
+
+## 使用示例
+
+```javascript
+const messageBridge = require("./index.js");
+
+// 发送消息并等待回复
+const result = await messageBridge.notify({
+  message: "需要你确认一下",
+  timeout: 60,
+});
+
+if (result.status === "replied") {
+  console.log("用户回复:", result.reply);
+}
+
+// 仅发送消息
+await messageBridge.send({
+  message: "任务完成！",
+});
+```
+
+## 文档 / Docs
+
+- [CONTRIBUTING.md](./CONTRIBUTING.md) - 贡献流程、新渠道接入、单测与 AI 友好说明（中英）
+- [SKILL.md](./SKILL.md) - 与 AI 技能/闭环使用相关的详细说明
+
+## 开发进度
+
+详细进度请查看 [PROGRESS.md](./PROGRESS.md)
+
+## 测试
+
+- `test.js` - 基础消息发送测试
+- `test-sdk.js` - SDK 功能测试
+- `test-ws-debug.js` - WebSocket 调试测试
+- `test-complete.js` - 完整功能测试
+- `test-quick.js` - 快速测试
+
+## 技术栈
+
+- Node.js
+- @larksuiteoapi/node-sdk
+- WebSocket 长链接
+
+## 作者
+
+7号智创 - "7号，启航！"
+
+## 许可 / License
+
+MIT
+
+---
+
+## English (short)
+
+- **What**: Send messages and wait for user replies over IM (Feishu implemented; other channels welcome).
+- **Quick start**: `npm install` → set `FEISHU_APP_ID` / `FEISHU_APP_SECRET` / `FEISHU_CHAT_ID` → `npm run build:dist` → `node test-quick.js`.
+- **API**: `notify({ message, timeout })` returns `{ status: "replied"|"timeout"|"error", reply, replyUser }`; `send({ message })` for fire-and-forget.
+- **Contributing**: See [CONTRIBUTING.md](./CONTRIBUTING.md) for new channels, tests, and AI-friendly checklists.
