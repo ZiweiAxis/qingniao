@@ -1,0 +1,29 @@
+# CI: 每次 push 构建并做轻量校验，无需飞书环境变量
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install
+        run: npm ci
+
+      - name: Build dist
+        run: npm run build:dist
+
+      - name: Smoke test (load dist)
+        run: node -e "const m = require('./dist/index.js'); if (!m.notify || !m.send) throw new Error('missing exports'); console.log('OK');"
