@@ -107,6 +107,17 @@ We welcome contributions. The project supports multiple channels (Feishu impleme
 
 ---
 
+## 发布到 npm / Publish to npm
+
+维护者可将本仓库发布为 npm 包，便于用户 `npm install skill-message-bridge` 或 `npx skill-message-bridge "..."` 使用。
+
+1. 在 [npmjs.com](https://www.npmjs.com/) 注册账号并登录；本机执行 `npm login`。
+2. 在仓库根目录执行 `npm run build:dist`（或由 `prepublishOnly` 自动执行），确认 `dist/` 已更新。
+3. 执行 `npm publish`（首次发布）；若使用 scope 如 `@hulk-yin/message-bridge`，需在 package.json 中改 `name` 并执行 `npm publish --access public`。
+4. 发布后用户可通过 `npm install skill-message-bridge` 安装；未发布前可从 GitHub 安装：`npm install github:hulk-yin/message-bridge`。
+
+---
+
 # English (summary)
 
 - **Contribution flow**: Fork → branch → implement & test → commit (message: `type: short desc`) → open PR with description and self-check.

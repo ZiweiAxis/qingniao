@@ -10,18 +10,38 @@
     "test": "node test.js",
     "conversation": "node feishu-conversation.js",
     "build:dist": "node scripts/copy-to-dist.js",
-    "turn": "node dist/feishu-turn.js"
+    "turn": "node dist/feishu-turn.js",
+    "prepublishOnly": "npm run build:dist"
   },
+  "bin": {
+    "skill-message-bridge": "dist/feishu-turn.js",
+    "message-bridge-turn": "dist/feishu-turn.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "SKILL.md",
+    "INSTALL.md",
+    "CONTRIBUTING.md"
+  ],
   "keywords": [
     "message-bridge",
     "feishu",
     "dingtalk",
     "wecom",
     "ai-agent",
-    "notification"
+    "notification",
+    "skill",
+    "cursor",
+    "codex"
   ],
   "author": "7号智创",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hulk-yin/message-bridge.git"
+  },
+  "homepage": "https://github.com/hulk-yin/message-bridge#readme",
   "dependencies": {
     "@larksuiteoapi/lark-mcp": "^0.5.0",
     "@larksuiteoapi/node-sdk": "^1.58.0",

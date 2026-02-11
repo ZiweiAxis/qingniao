@@ -105,9 +105,10 @@ MIT
 
 ---
 
-## Install as Skill (Cursor / Codex / Claude Code)
+## 安装方式 / Install
 
-See **[INSTALL.md](./INSTALL.md)** for one-command install into Cursor (project or global), Codex (`install-skill-from-github.py`), or any skill-capable environment. All commands run from the repo root after clone.
+- **npm**：`npm install skill-message-bridge`（发布后）；未发布可 `npm install github:hulk-yin/message-bridge`。代码中 `require("skill-message-bridge")`，命令行 `npx skill-message-bridge "..."`。
+- **Skill（Cursor / Codex / Claude）**：见 **[INSTALL.md](./INSTALL.md)**，支持 Git 克隆到各环境 skill 目录或从 npm 安装后使用。
 
 ## English (short)
 

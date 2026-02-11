@@ -1,12 +1,51 @@
 # 安装为 Skill / Install as Skill
 
-本仓库可作为 **Skill** 被 Cursor、Codex、Claude Code 等 AI 编码环境加载，实现「会话切换到飞书/钉钉」、发消息、等回复等能力。安装后，**所有命令均在 skill 目录（即本仓库根目录）执行**。
+本仓库可作为 **Skill** 被 Cursor、Codex、Claude Code 等 AI 编码环境加载，实现「会话切换到飞书/钉钉」、发消息、等回复等能力。支持 **npm 包** 与 **Git 克隆** 两种方式。
 
-This repo can be installed as a **skill** in Cursor, Codex, Claude Code, etc. All commands below assume you run them from the **skill root** (this repo root).
+This repo can be installed as a **skill** in Cursor, Codex, Claude Code, etc. You can use **npm** or **Git clone**.
 
 ---
 
-## Cursor
+## 方式一：npm 包 / Via npm
+
+适合：在任意 Node 项目里直接依赖、或通过 `npx` 调用，无需克隆仓库。Skill 描述（SKILL.md）会随包安装到 `node_modules/skill-message-bridge/`，部分环境可从该路径读取。
+
+### 安装
+
+```bash
+# 项目依赖
+npm install skill-message-bridge
+
+# 或全局（可随处运行 message-bridge-turn）
+npm install -g skill-message-bridge
+```
+
+### 使用
+
+```javascript
+// 在代码中
+const messageBridge = require("skill-message-bridge");
+const result = await messageBridge.notify({ message: "请确认", timeout: 60 });
+```
+
+```bash
+# 命令行单轮（发到飞书并等回复）
+npx skill-message-bridge "你要发的内容"
+# 或全局安装后
+skill-message-bridge "你要发的内容"
+```
+
+配置好环境变量 `FEISHU_APP_ID`、`FEISHU_APP_SECRET`、`FEISHU_CHAT_ID` 后即可使用。若需在 Cursor/Codex 中作为「可加载的 skill」（含 SKILL.md 说明），需将 skill 目录指向 `node_modules/skill-message-bridge`，或同时用下面的 Git 方式安装 SKILL 到 `.cursor/skills/`。
+
+**发布状态**：包名 `skill-message-bridge`，发布到 npm 后可直接 `npm install`。当前若未发布，可用 `npm install github:hulk-yin/message-bridge` 从 GitHub 安装。
+
+---
+
+## 方式二：Git 克隆（完整 Skill）/ Via Git clone
+
+安装后，**所有命令均在 skill 目录（即本仓库根目录）执行**。适合需要完整 SKILL.md + 源码、或需改代码贡献的场景。
+
+### Cursor
 
 Cursor 从项目的 `.cursor/skills/<name>/` 或用户级 skills 目录加载 skill；本仓库包含 `SKILL.md` + 实现代码，**整仓克隆到 skill 目录即可**。
 
@@ -90,11 +129,12 @@ node test-quick.js
 
 ## 小结
 
-| 环境        | 安装方式 | Skill 根目录 |
-|-------------|----------|----------------|
-| Cursor 项目 | `git clone ... .cursor/skills/message-bridge` | 项目内 `.cursor/skills/message-bridge` |
-| Cursor 全局 | `git clone ... ~/.cursor/skills/message-bridge` | `~/.cursor/skills/message-bridge` |
-| Codex       | `install-skill-from-github.py --repo hulk-yin/message-bridge --path .` 或手动 clone | `$CODEX_HOME/skills/message-bridge` |
-| 其他        | `git clone ... <SKILLS_ROOT>/message-bridge` | `<SKILLS_ROOT>/message-bridge` |
+| 方式 | 环境        | 安装方式 | 说明 |
+|------|-------------|----------|------|
+| **npm** | 任意 Node 项目 | `npm install skill-message-bridge` | 代码中 `require("skill-message-bridge")`；命令行 `npx skill-message-bridge "..."`；未发布前可用 `npm install github:hulk-yin/message-bridge` |
+| **Git** | Cursor 项目 | `git clone ... .cursor/skills/message-bridge` | 项目内 `.cursor/skills/message-bridge` |
+| **Git** | Cursor 全局 | `git clone ... ~/.cursor/skills/message-bridge` | `~/.cursor/skills/message-bridge` |
+| **Git** | Codex       | `install-skill-from-github.py --repo hulk-yin/message-bridge --path .` 或手动 clone | `$CODEX_HOME/skills/message-bridge` |
+| **Git** | 其他        | `git clone ... <SKILLS_ROOT>/message-bridge` | `<SKILLS_ROOT>/message-bridge` |
 
-**统一约定**：实现与命令均以「本仓库根目录」为当前目录，不依赖绝对路径。
+**统一约定**：Git 方式下，实现与命令均以「本仓库根目录」为当前目录；npm 方式下，命令在安装目录 `node_modules/skill-message-bridge` 或通过 `npx` 运行。
