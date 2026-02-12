@@ -1,0 +1,29 @@
+{
+  "description": "skill-message-bridge 飞书应用所需权限。请在飞书开放平台 → 应用 → 权限管理 → 接口权限 中搜索下列权限名并开通。",
+  "permissions": [
+    {
+      "name": "im:message",
+      "desc": "发送消息"
+    },
+    {
+      "name": "im:message:send_as_bot",
+      "desc": "以应用（机器人）身份发送消息"
+    },
+    {
+      "name": "im:message:read_content",
+      "desc": "读取消息内容（接收回复）"
+    },
+    {
+      "name": "im:message:receive_v1",
+      "desc": "接收消息事件（事件订阅，长连接收消息必开）"
+    },
+    {
+      "name": "im:chat:readonly",
+      "desc": "获取群信息（可选，用于获取群列表/chat_id）"
+    }
+  ],
+  "event_subscription": {
+    "method": "长连接",
+    "events": ["im.message.receive_v1"]
+  }
+}

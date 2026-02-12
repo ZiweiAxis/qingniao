@@ -26,21 +26,24 @@ A multi-channel message bridge for AI agents: send messages and wait for replies
 
 ## 快速开始 / Quick Start
 
-```bash
-# 1. 安装依赖
-npm install
+**无需安装**，配置环境变量后直接使用 npx：
 
-# 2. 配置环境变量（飞书示例，请替换为你的应用与群聊 ID）
+```bash
+# 1. 配置环境变量（飞书示例，完整步骤见 docs/ONBOARDING-FEISHU.md）
 export FEISHU_APP_ID="your_app_id"
 export FEISHU_APP_SECRET="your_app_secret"
 export FEISHU_CHAT_ID="oc_xxx"
 
-# 3. 构建（若改过 src）
-npm run build:dist
+# 2. 自检
+npx skill-message-bridge check-env
 
-# 4. 运行测试
-node test-quick.js
+# 3. 使用
+npx skill-message-bridge send "测试"      # 只发
+npx skill-message-bridge "消息"           # 发并等回复
+npx skill-message-bridge --help
 ```
+
+在仓库内开发时：`npm install` → `npm run build:dist` → `node test-quick.js`。
 
 ## 功能特性
 

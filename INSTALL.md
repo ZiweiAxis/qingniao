@@ -1,43 +1,37 @@
 # 安装为 Skill / Install as Skill
 
-本仓库可作为 **Skill** 被 Cursor、Codex、Claude Code 等 AI 编码环境加载，实现「会话切换到飞书/钉钉」、发消息、等回复等能力。支持 **npm 包** 与 **Git 克隆** 两种方式。
-
-This repo can be installed as a **skill** in Cursor, Codex, Claude Code, etc. You can use **npm** or **Git clone**.
+本仓库可作为 **Skill** 被 Cursor、Codex、Claude Code 等 AI 编码环境加载，实现「会话切换到飞书/钉钉」、发消息、等回复等能力。**推荐**：无需安装，直接使用 **npx** 完成全部操作。
 
 ---
 
-## 方式一：npm 包 / Via npm
+## 推荐：直接使用 npx（无需安装）
 
-适合：在任意 Node 项目里直接依赖、或通过 `npx` 调用，无需克隆仓库。Skill 描述（SKILL.md）会随包安装到 `node_modules/skill-message-bridge/`，部分环境可从该路径读取。
-
-### 安装
+配置好环境变量 `FEISHU_APP_ID`、`FEISHU_APP_SECRET`、`FEISHU_CHAT_ID` 后，任意目录执行：
 
 ```bash
-# 项目依赖
-npm install skill-message-bridge
-
-# 或全局（可随处运行 message-bridge-turn）
-npm install -g skill-message-bridge
+npx skill-message-bridge check-env        # 自检环境变量
+npx skill-message-bridge send "测试"      # 只发不等
+npx skill-message-bridge "消息"           # 发并等回复（默认 notify）
+npx skill-message-bridge notify "消息" --timeout=60
+npx skill-message-bridge --help          # 帮助
 ```
 
-### 使用
+**从零到获取 chat_id 的完整步骤**见 [docs/ONBOARDING-FEISHU.md](./docs/ONBOARDING-FEISHU.md)。若需在 Cursor/Codex 中作为「可加载的 skill」（含 SKILL.md），可将 skill 目录指向 `node_modules/skill-message-bridge`（见下），或用 Git 克隆到 `.cursor/skills/`。
+
+---
+
+## 方式一：npm 包（需在代码中 require 时）
+
+```bash
+npm install skill-message-bridge
+```
 
 ```javascript
-// 在代码中
 const messageBridge = require("skill-message-bridge");
 const result = await messageBridge.notify({ message: "请确认", timeout: 60 });
 ```
 
-```bash
-# 命令行单轮（发到飞书并等回复）
-npx skill-message-bridge "你要发的内容"
-# 或全局安装后
-skill-message-bridge "你要发的内容"
-```
-
-配置好环境变量 `FEISHU_APP_ID`、`FEISHU_APP_SECRET`、`FEISHU_CHAT_ID` 后即可使用。若需在 Cursor/Codex 中作为「可加载的 skill」（含 SKILL.md 说明），需将 skill 目录指向 `node_modules/skill-message-bridge`，或同时用下面的 Git 方式安装 SKILL 到 `.cursor/skills/`。
-
-**发布状态**：已上架 npm，包名 `skill-message-bridge`，直接 `npm install skill-message-bridge`。亦可从 GitHub 安装：`npm install github:hulk-yin/message-bridge`。
+命令行仍可直接用 npx，无需全局安装。**发布状态**：包名 `skill-message-bridge`，已上架 npm；亦可 `npm install github:hulk-yin/message-bridge`。
 
 ---
 
@@ -119,11 +113,15 @@ cd <SKILLS_ROOT>/message-bridge && npm install && npm run build:dist
 ```bash
 npm install
 npm run build:dist
-# 配置 FEISHU_* 后做一次快速测试（会真实发飞书）
-node test-quick.js
+# 1. 检查环境变量（不请求飞书）
+npx skill-message-bridge check-env
+# 2. 配置 FEISHU_* 后做一次快速测试（会真实发飞书）
+npx skill-message-bridge send "测试"
+# 或发并等回复
+npx skill-message-bridge "请回复测试" --timeout=60
 ```
 
-若测试通过，即可在 Cursor/Codex/Claude 中通过「会话切换到飞书」或对应指令使用本 skill。
+未配置飞书时，先按 [docs/ONBOARDING-FEISHU.md](./docs/ONBOARDING-FEISHU.md) 完成从创建应用到获取 chat_id 的整条链路。若测试通过，即可在 Cursor/Codex/Claude 中通过「会话切换到飞书」或对应指令使用本 skill。
 
 ---
 

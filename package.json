@@ -10,19 +10,23 @@
     "test": "node test.js",
     "conversation": "node feishu-conversation.js",
     "build:dist": "node scripts/copy-to-dist.js",
-    "turn": "node dist/feishu-turn.js",
+    "turn": "node dist/cli.js",
+    "check-env": "node scripts/check-feishu-env.js",
     "prepublishOnly": "npm run build:dist"
   },
   "bin": {
-    "skill-message-bridge": "dist/feishu-turn.js",
-    "message-bridge-turn": "dist/feishu-turn.js"
+    "skill-message-bridge": "dist/cli.js",
+    "message-bridge-turn": "dist/cli.js"
   },
   "files": [
     "dist",
     "README.md",
     "SKILL.md",
+    "reference.md",
     "INSTALL.md",
-    "CONTRIBUTING.md"
+    "CONTRIBUTING.md",
+    "docs",
+    "scripts"
   ],
   "keywords": [
     "message-bridge",

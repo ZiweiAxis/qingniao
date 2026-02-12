@@ -1,17 +1,42 @@
 /**
  * MessageBridge Skill - 完整实现（修复版）
- * 
- * 使用飞书 WebSocket 长链接实现消息发送和接收
+ * 使用飞书 WebSocket 长连接实现消息发送和接收。
+ * 配置来源：环境变量 FEISHU_* / DITING_FEISHU_* 优先，否则读取 ~/.message-bridge/config.json
  */
 
 const lark = require("@larksuiteoapi/node-sdk");
+const path = require("path");
+const fs = require("fs");
+const os = require("os");
 
-// 配置
+function loadConfigFromFile() {
+  const configPath = path.join(os.homedir(), ".message-bridge", "config.json");
+  try {
+    const raw = fs.readFileSync(configPath, "utf8");
+    const data = JSON.parse(raw);
+    return data.feishu || {};
+  } catch (e) {
+    return {};
+  }
+}
+
+const fileCfg = loadConfigFromFile();
 const config = {
-  appId: process.env.FEISHU_APP_ID || process.env.DITING_FEISHU_APP_ID || "",
-  appSecret: process.env.FEISHU_APP_SECRET || process.env.DITING_FEISHU_APP_SECRET || "",
-  chatId: process.env.FEISHU_CHAT_ID || process.env.DITING_FEISHU_CHAT_ID || "",
+  appId: process.env.FEISHU_APP_ID || process.env.DITING_FEISHU_APP_ID || fileCfg.appId || "",
+  appSecret: process.env.FEISHU_APP_SECRET || process.env.DITING_FEISHU_APP_SECRET || fileCfg.appSecret || "",
+  chatId: process.env.FEISHU_CHAT_ID || process.env.DITING_FEISHU_CHAT_ID || fileCfg.chatId || "",
 };
+
+/** 供 CLI 等使用：获取当前生效的配置（只读） */
+function getConfig() {
+  return { ...config };
+}
+
+/** 供 connect 子命令：收到第一条消息时 resolve(chat_id) */
+let firstMessageResolver = null;
+function setFirstMessageResolver(resolver) {
+  firstMessageResolver = resolver;
+}
 
 // 全局客户端
 let httpClient = null;
@@ -69,6 +94,11 @@ async function init() {
             console.log(`[MessageBridge] 任务 ${taskId} 已解决`);
             break;
           }
+        }
+        const chatId = message.chat_id || (message.chat && message.chat.chat_id) || data.chat_id;
+        if (firstMessageResolver && chatId) {
+          firstMessageResolver(chatId);
+          firstMessageResolver = null;
         }
       } catch (error) {
         console.error("[MessageBridge] 处理消息失败:", error.message);
@@ -250,10 +280,19 @@ async function send(params) {
  */
 function close() {
   if (wsClient) {
-    // WebSocket 客户端没有 close 方法，会自动管理
     console.log("[MessageBridge] 关闭连接");
   }
   isInitialized = false;
+}
+
+/**
+ * 连接模式：初始化后等待第一条消息，resolve 该消息的 chat_id（供 CLI connect 子命令获取群聊 ID）
+ */
+function runConnectMode() {
+  return new Promise((resolve) => {
+    setFirstMessageResolver(resolve);
+    return init();
+  });
 }
 
 module.exports = {
@@ -261,6 +300,9 @@ module.exports = {
   notify,
   send,
   close,
+  getConfig,
+  runConnectMode,
+  setFirstMessageResolver,
   name: "messageBridge",
   description: "AI 智能体的消息桥梁，连接飞书/钉钉/企微，实现异步通知与确认",
 };
