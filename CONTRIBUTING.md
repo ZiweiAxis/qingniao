@@ -105,7 +105,14 @@ We welcome contributions. The project supports multiple channels (Feishu impleme
 
 （此节仅作说明，不要求贡献者必须执行。）
 
-发版 npm 由 GitHub Actions 在推送 `v*` tag 时自动执行，见 `.github/workflows/publish.yml`，无需写入贡献说明。
+**项目规则：每次更新版本后必须打 tag 并推送。** 在修改 `package.json` 的 `version` 并提交后，执行：
+
+```bash
+git tag v<版本号>   # 例如 git tag v0.2.0
+git push origin v<版本号>
+```
+
+发版 npm 由 GitHub Actions 在推送 `v*` tag 时自动执行，见 `.github/workflows/publish.yml`。未推送 tag 则 npm 不会发布。
 
 ---
 
