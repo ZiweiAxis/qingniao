@@ -3,30 +3,36 @@ name: message-bridge
 description: AI 智能体消息桥梁，连接飞书/钉钉/企微，实现异步通知与确认。发送消息到飞书群、等待用户回复、会话切换到飞书。在用户提到飞书、钉钉、企微、消息通知、审批确认、会话切换时使用。
 ---
 
-# MessageBridge Skill
+# MessageBridge Skill（青鸟）
 
-AI 智能体的消息桥梁，连接飞书/钉钉/企微，实现异步通知与确认。
+AI 智能体的消息桥梁，连接飞书/钉钉/企微，实现异步通知与确认。**对外可称「青鸟」**，技术名与包名仍为 `skill-message-bridge`。
 
-**推荐用法**：**无需安装**，直接使用 `npx skill-message-bridge` 完成发消息、等回复、自检等全部操作。需在 Cursor/Codex 内做「会话切换飞书」闭环时，可将本仓克隆到 skill 目录并执行 `npm run turn -- "<内容>"`。安装方式见 [INSTALL.md](./INSTALL.md)。
+**对外唯一用法**：**无需安装**，发内容到飞书并等回复只需一条命令，会话切换时循环调用同一条：
 
-**交互式配置**：要出现「请输入 App ID」等引导，必须**用户在本机终端里亲自执行**（stdin 为 TTY）。在项目目录执行：`npm run dev:cli -- config set feishu`。若由助手代跑或使用 npx 且为旧版，通常为非 TTY，不会出现提示，此时请用参数方式或按上述在终端执行。
+```bash
+npx skill-message-bridge "<内容>"
+# 可选超时：npx skill-message-bridge "<内容>" --timeout=3600
+```
 
-## Quick Start（npx 优先，无需安装）
+其余（自检、配置、首次配对等）都是该命令的**内部逻辑**，见下文「命令内部逻辑与配置」。需在 Cursor/Codex 内做「会话切换飞书」闭环时，可将本仓克隆到 skill 目录并执行 `npm run turn -- "<内容>"`。安装方式见 [INSTALL.md](./INSTALL.md)。
 
-**无需 `npm install`**，任意目录直接执行 `npx skill-message-bridge <子命令>`，npx 会从 npm 拉取并运行。若出现 `command not found`，可改用 `npx --yes skill-message-bridge@latest <子命令>` 强制使用发布版。
+## Quick Start
 
-1. **配置飞书**：使用 `npx skill-message-bridge config set feishu --app-id=xxx --app-secret=xxx` 写入 `~/.message-bridge/config.json`，再用 `npx skill-message-bridge connect` 在群内发消息获取并保存 chat_id；或设置环境变量。完整步骤见 [飞书 Onboarding](./docs/ONBOARDING-FEISHU.md)。
-2. **自检**：`npx skill-message-bridge check-env`
-3. **使用**：
-   - 只发不等：`npx skill-message-bridge send "测试"`
-   - 发并等回复：`npx skill-message-bridge "消息"` 或 `npx skill-message-bridge notify "消息" [--timeout=60]`
-   - 帮助：`npx skill-message-bridge --help`
+**无需 `npm install`**，任意目录执行（npx 会从 npm 拉取并运行）：
 
-## 1. Skill 配置自检
+```bash
+npx skill-message-bridge "<要发到飞书的内容>"
+```
+
+- 把内容发到飞书并等待用户回复；stdout 输出单行 JSON（`status`、`reply`、`sessionHint` 等）。
+- 「到飞书」/ 会话切换：循环执行「AI 生成回复 → `npx skill-message-bridge "<内容>"` → 解析回复 → 再生成 → 再调用」，直到用户说「结束」或「切回」。
+- 若未配置飞书，命令内部会自检并给出引导，按提示完成配置后再用同一条命令即可（配置与首次配对见下文「命令内部逻辑与配置」）。
+
+## 1. Skill 配置
 
 - **包名**：`skill-message-bridge`。
-- **CLI 入口**：`dist/cli.js`（bin：`skill-message-bridge` / `message-bridge-turn`）。所有能力均可通过 npx 完成。
-- **飞书配置**：优先使用环境变量；否则使用 `~/.message-bridge/config.json`（通过 `npx skill-message-bridge config set feishu ...` 写入）。`npx skill-message-bridge check-env` 可自检；完整引导见 [飞书 Onboarding](./docs/ONBOARDING-FEISHU.md)。
+- **对外用法**：`npx skill-message-bridge "<内容>"`（发到飞书并等回复）；自检、config、connect 等为命令内部逻辑，见 §4.2。
+- **飞书配置**：环境变量或 `~/.message-bridge/config.json`；完整引导见 [飞书 Onboarding](./docs/ONBOARDING-FEISHU.md)。
 
 ## 2. 功能
 
@@ -46,27 +52,37 @@ AI 智能体的消息桥梁，连接飞书/钉钉/企微，实现异步通知与
 
 当前仅飞书可用；钉钉/企微欢迎按 CONTRIBUTING 接入。
 
-## 4. 使用方式（全部可用 npx，无需安装）
+## 4. 使用方式
 
-### 4.1 npx 命令一览（推荐）
+### 4.1 对外唯一用法（AI / 调用方只认这一条）
 
-| 命令 | 说明 |
-|------|------|
-| `npx skill-message-bridge check-env` | 检查配置（环境变量或 ~/.message-bridge/config.json） |
-| `npx skill-message-bridge config set feishu [--app-id=xxx] [--app-secret=xxx] [--chat-id=xxx]` | 写入 ~/.message-bridge/config.json。**交互式引导**：需在项目目录、**本机终端亲自**执行 `npm run dev:cli -- config set feishu`（无参数时出现「请输入 App ID」等）；npx 或助手代跑多为非 TTY，不会出现提示 |
-| `npx skill-message-bridge config show` | 查看当前配置（脱敏） |
-| `npx skill-message-bridge config path` | 显示配置文件路径 |
-| `npx skill-message-bridge connect` | 启动长连接，收到首条群消息后输出 chat_id 并提示保存 |
-| `npx skill-message-bridge send "<消息>"` | 只发送，不等待回复 |
-| `npx skill-message-bridge "<消息>"` | 发送并等待回复（默认 notify） |
-| `npx skill-message-bridge notify "<消息>" [--timeout=N]` | 同上，可指定超时秒数 |
-| `npx skill-message-bridge --help` | 帮助 |
+```bash
+npx skill-message-bridge "<内容>"
+npx skill-message-bridge "<内容>" --timeout=3600   # 可选：单轮超时秒数
+```
 
-消息可从参数或 stdin 传入，例如：`echo "内容" \| npx skill-message-bridge send`。
+- 把 `<内容>` 发到飞书并等待用户回复；stdout 输出单行 JSON（`status`、`reply`、`sessionHint` 等）。
+- 消息也可从 stdin 传入：`echo "内容" | npx skill-message-bridge`。
+- **「到飞书」/ 会话切换**：只循环调用这一条命令，由 AI 维持会话，直到用户说「结束」或「切回」。
 
 不要使用 `require("@skills/message-bridge")`（包名为 `skill-message-bridge`）。
 
-### 4.2 在代码中调用（可选）
+### 4.2 命令内部逻辑与配置（非对外用法）
+
+以下均为**命令内部**或**用户首次配置**时涉及的行为，AI 不需要根据场景选择「用 check-env 还是 connect 还是 send」；只需用 `npx skill-message-bridge "<内容>"`，未配置时命令会自检并给出引导。
+
+| 内部/配置用途 | 说明 |
+|---------------|------|
+| **自检** | 命令执行时会检查环境变量或 `~/.message-bridge/config.json`；缺项时输出引导，不直接发消息。 |
+| **写入配置** | 用户首次配置：`npx skill-message-bridge config set feishu --app-id=xxx --app-secret=xxx` 写入配置文件；交互式引导需用户**本机终端**执行（TTY），npx 代跑多为非 TTY。 |
+| **首次配对（chat_id）** | 仅缺 Chat ID 时：用户在本机终端执行 `npx skill-message-bridge connect`，在飞书发一条消息后终端输出 chat_id，再执行 `config set feishu --chat-id=oc_xxx` 保存。**connect 仅用于此次配对**，AI 在「到飞书」时**不要**调用 connect，只循环调用 `npx skill-message-bridge "<内容>"`。 |
+| **仅发不等** | 内部对应 `send` 子命令；对外统一用「发内容并等回复」这一条即可，需要「只发不等」时可由调用方发完即忽略回复或设极短超时。 |
+| **心跳（--heartbeat）** | 仅等待飞书下一条消息，**不向飞书推送任何内容**；用于单轮超时后**把会话重新拉起**、继续等飞书。用法：`npx skill-message-bridge --heartbeat [--timeout=N]`。会话永不因超时退出，超时后必须用心跳拉起。输出格式与 `"<内容>"` 一致（单行 JSON + sessionHint），超时同样为 `status:"timeout"`。 |
+| **帮助** | `npx skill-message-bridge --help`、`config show`、`config path` 等为调试/运维用，非会话闭环所需。 |
+
+完整飞书配置与权限步骤见 [飞书 Onboarding](./docs/ONBOARDING-FEISHU.md)。
+
+### 4.3 在代码中调用（可选）
 
 需要在自己写的 Node 脚本里调用时，可安装后 require：
 
@@ -79,7 +95,7 @@ const messageBridge = require("skill-message-bridge");
 // 或在本仓库根目录开发时: require("./dist/index.js")（需先 npm run build）
 ```
 
-### 4.3 环境变量（飞书）
+### 4.4 环境变量（飞书）
 
 ```bash
 export FEISHU_APP_ID="cli_xxx"
@@ -89,7 +105,7 @@ export FEISHU_CHAT_ID="oc_xxx"
 
 （也支持 `DITING_FEISHU_*`。如何获取 chat_id 见 [飞书 Onboarding](./docs/ONBOARDING-FEISHU.md)。）
 
-### 4.4 在 Node.js 中使用
+### 4.5 在 Node.js 中使用
 
 ```javascript
 const messageBridge = require("skill-message-bridge");   // 从 npm 安装时
@@ -110,7 +126,7 @@ if (result.status === "replied") {
 await messageBridge.send({ message: "任务已完成！" });
 ```
 
-### 4.5 在 OpenClaw / 其他 AI 智能体中
+### 4.6 在 OpenClaw / 其他 AI 智能体中
 
 ```javascript
 const { notify, send } = require("skill-message-bridge");
@@ -174,54 +190,39 @@ if (result.status === "replied" && result.reply.includes("是")) {
 }
 ```
 
-## 首次使用引导与 Channel 选择
+## 首次使用与配置引导（命令内部逻辑）
 
-**（AI 必读）当用户说「切到飞书」「切换到飞书」「发消息到飞书」或使用本 skill 的飞书能力时：**
+**（AI 必读）当用户说「切到飞书」「切换到飞书」「发消息到飞书」时：你只需循环调用 `npx skill-message-bridge "<内容>"`。** 不需要先跑 check-env、再选 config 或 connect；自检与配置是**命令内部逻辑**，未配置时命令会报错或提示，你再按下面引导用户即可。
 
-1. **先执行配置自检**：运行 `npx skill-message-bridge check-env`（或在 skill 目录下 `npm run check-env`）。
-2. **若自检未通过**（出现「未设置」「请补全」「凭证无效」等）：**不要**直接执行发消息或会话切换；按**缺项顺序**引导：
-   - **若缺少 App ID 或 App Secret**（第一步，优先）：
-     - 引导用户到 [飞书开放平台](https://open.feishu.cn/) → **应用开发** → **创建企业自建应用** → 进入应用 → **凭证与基础信息**，复制 **App ID**（形如 `cli_xxx`）和 **App Secret**（可点击「重置」生成）。
-     - 然后执行：`npx skill-message-bridge config set feishu --app-id=你的AppID --app-secret=你的AppSecret`（或 `npx --yes skill-message-bridge@latest config set feishu ...`）。
-     - 说明：先完成本步并保存，再继续后续步骤。
-   - **若仅缺 Chat ID**（或 App ID/Secret 已配置后）：
-     - 说明需在飞书后台完成**事件订阅**（长连接 + `im.message.receive_v1`），再在**群聊或私聊**中向机器人发一条消息。
-     - 执行 `npx skill-message-bridge connect`，收到消息后终端会输出 chat_id（群聊/私聊均可），再执行 `npx skill-message-bridge config set feishu --chat-id=oc_xxx` 保存。
-   - 完整图文步骤见 **[docs/ONBOARDING-FEISHU.md](./docs/ONBOARDING-FEISHU.md)**。配置完成后请用户再次说「切到飞书」或重新自检。
-3. **若自检通过**：再执行用户请求（发消息、会话切换等）。
+若调用 `npx skill-message-bridge "<内容>"` 失败或提示未配置，按**缺项顺序**引导用户（以下均为命令内部/用户侧操作，不是你多调几种子命令）：
 
----
+- **缺少 App ID 或 App Secret**：引导用户到 [飞书开放平台](https://open.feishu.cn/) 创建应用并复制凭证，再让用户执行 `npx skill-message-bridge config set feishu --app-id=xxx --app-secret=xxx` 保存；完整步骤见 [docs/ONBOARDING-FEISHU.md](./docs/ONBOARDING-FEISHU.md)。
+- **仅缺 Chat ID**：需在飞书后台配置事件订阅（长连接 + `im.message.receive_v1`），再让用户**在本机终端**执行 `npx skill-message-bridge connect`，在群聊或私聊给机器人发一条消息后终端会输出 chat_id，再执行 `config set feishu --chat-id=oc_xxx` 保存。**connect 仅此次配对用，由用户本机执行，AI 不要代跑；「到飞书」时只循环 `npx skill-message-bridge "<内容>"`。**
 
-1. **选择 Channel**  
-   - **默认飞书**：直接进入飞书引导，见 **[docs/ONBOARDING-FEISHU.md](./docs/ONBOARDING-FEISHU.md)**（独立文档：App ID/App Secret → npx config set → 权限配置含 [权限列表 JSON](./docs/feishu-permissions.json) → 启动长连接 → 事件订阅 → 群内发消息确认并保存 chat_id）。
-   - **其他 Channel（钉钉/企微等）**：当前未实现。请到 GitHub 仓库 [Issues](https://github.com/hulk-yin/message-bridge/issues) **先搜索**是否已有「xx channel 需求」或「支持 xx」类 issue：  
-     - **若已有**：在文档或回复中给出该 issue 链接，供用户跟进。  
-     - **若没有**：引导用户 [新建 Issue](https://github.com/hulk-yin/message-bridge/issues/new)，说明需要的 channel 与使用场景，便于后续支持或社区共建。
+配置完成后用户再说「切到飞书」即可正常循环上述唯一命令。
 
-2. **飞书 Channel 配置要点**  
-   - 使用 **npx** 写入配置，不依赖环境变量：`npx skill-message-bridge config set feishu --app-id=xxx --app-secret=xxx`，配置保存在 **`~/.message-bridge/config.json`**。  
-   - 权限：在飞书后台按 [docs/feishu-permissions.json](./docs/feishu-permissions.json) 中的权限名开通；飞书平台若支持批量导入则可使用该 JSON。  
-   - 先启动长连接（`npx skill-message-bridge connect`），再在飞书后台配置**事件订阅（长连接 + im.message.receive_v1）**，然后在**群聊或私聊**中向机器人发消息，收到后 CLI 会输出 chat_id，执行 `npx skill-message-bridge config set feishu --chat-id=oc_xxx` 保存。  
-   - **若无法发送或收不到消息**：先完成飞书后台的**长连接事件订阅**配置，再重试。
+- **其他 Channel（钉钉/企微）**：当前未实现，可到 [Issues](https://github.com/hulk-yin/message-bridge/issues) 搜索或新建需求。
 
 ## 会话切换到飞书 = 飞书长周期对话闭环
 
-当调用方（如 Cursor AI）收到用户说**「会话切换到飞书」**时，应进入**你与 skill 的长周期对话环境**：非飞书渠道启动 → AI 的输出发到飞书 → 飞书用户回复 → AI 基于回复继续思考 → 结果再发飞书，循环执行；**仅**在用户说「结束」「切回」时退出，不设轮数上限，不主动结束则永远 loop。
+**（AI 必读）除用户明确发出结束信号（如在飞书说「结束」「切回」）外，会话永不结束。** 单轮超时、任务完成、长时间无回复等任何场景均不结束会话；超时后用心跳把会话重新拉起，继续等飞书下一条。
 
-**单轮工具**（供 AI 循环调用）：
+当用户说**「会话切换到飞书」**时，进入长周期对话：AI 的输出发到飞书 → 飞书用户回复 → AI 基于回复再生成 → 再发飞书，循环；**仅**在用户说「结束」「切回」时退出，不设轮数上限。
+
+**唯一用法**（与上文 4.1 一致）：
 
 ```bash
 npx skill-message-bridge "<AI 的回复内容>"
-# 或指定超时：npx skill-message-bridge notify "<内容>" --timeout=3600
-# 若在 skill 目录内：npm run turn -- "<AI 的回复内容>"
+npx skill-message-bridge "<内容>" --timeout=3600   # 可选
+# 若在 skill 目录内：npm run turn -- "<内容>"
 ```
 
-- 把内容发到飞书并等待用户回复。
-- 输出单行 JSON：`{"status":"replied","reply":"用户回复", "replyUser":"?", "sessionHint":"..."}`；超时为 `"status":"timeout"`。**`sessionHint`**：固定为「用户未说「结束」或「切回」前请继续循环发消息，勿退出飞书会话」。是否退出由调用方根据用户回复语义（如明确说「结束」「切回」）自行判断，本 skill 不做内容匹配以免误判。
-- **会话回复后自动补一句给调用方**（stderr）：`[MessageBridge] 请根据 sessionHint 继续发下一条消息到飞书，勿退出会话。` 是否结束由调用方根据用户语义（如「结束」「切回」）自行判断，本 skill 不做内容匹配以免误判。
-- 超时：默认 `FEISHU_TURN_TIMEOUT=3600`（秒）；可用 `--timeout=N` 覆盖。单轮超时后不要退出闭环，发「等待超时，如需继续请直接回复」并再次等待。
+- 把内容发到飞书并等待用户回复；stdout 输出单行 JSON：`{"status":"replied","reply":"用户回复", "replyUser":"?", "sessionHint":"..."}`，超时为 `"status":"timeout"`。
+- **sessionHint**：固定为「用户未说「结束」或「切回」前请继续循环发消息，勿退出飞书会话」。是否退出由调用方根据用户回复语义判断，本 skill 不做内容匹配。
+- stderr 会提示：`[MessageBridge] 请根据 sessionHint 继续发下一条消息到飞书，勿退出会话。`
+- 超时：默认约 12 小时（或 `FEISHU_TURN_TIMEOUT`）；可用 `--timeout=N` 覆盖。**单轮超时后永不退出**：用 **心跳** `npx skill-message-bridge --heartbeat [--timeout=N]` 把会话重新拉起，挂起等飞书下一条（不推送任何内容）；或发「等待超时，如需继续请直接回复」后再发一条 `"<内容>"`。超时≠结束会话。
 
-**闭环**：循环执行「AI 生成回复 → 调用 `npx skill-message-bridge "<内容>"`（或 `npm run turn -- "<内容>"`）→ 解析 reply 与 **sessionHint** → 再生成 → 再调用」；仅当 sessionHint 提示可退出或用户说「结束」/「切回」时退出，不设轮数上限，永远 loop。
+**闭环**：循环「AI 生成回复 → `npx skill-message-bridge "<内容>"` → 解析 reply、sessionHint；若本轮超时 → 用 `npx skill-message-bridge --heartbeat [--timeout=N]` 重新拉起会话再等 → 再生成 → 再调用」。**仅当用户发出明确结束信号（如「结束」「切回」）时退出；任务结束、超时、无回复等任何其他场景一律不退出。**
 
 **为何会自动断掉**：闭环在 Cursor 单次回复里跑，有工具调用/上下文上限，跑一段时间就会结束当次回复。**解决**：要不依赖 Cursor 的持久对话，可运行常驻进程 `npm run conversation`（即 `node scripts/feishu-conversation.js`，需配置 AI_REPLY_URL 或 OPENAI_API_KEY），在飞书里一直聊直到你说结束；若继续用 Cursor 闭环，断掉后说「继续飞书」即恢复。
 
@@ -237,18 +238,13 @@ npm run conversation   # 或 node scripts/feishu-conversation.js
 
 ## 测试
 
+**验证唯一用法**（发到飞书并等回复，需飞书群内有人回）：
+
 ```bash
-# 自检环境变量（不请求飞书）
-npx skill-message-bridge check-env
-
-# 只发一条（不等待回复）
-npx skill-message-bridge send "测试"
-
-# 发并等回复（需在飞书群内有人回）
-npx skill-message-bridge "请回复测试"   # 或 npx skill-message-bridge notify "..." --timeout=60
+npx skill-message-bridge "请回复测试"
 ```
 
-在仓库内还可运行：`npm test`（主测试）、`npm run test:quick`（快速 notify）、`npm run test:complete`（完整功能）、`npm run test:session-bridge`（Session Bridge）。
+自检、只发不等等为命令内部/调试用（见 §4.2）。在仓库内还可运行：`npm test`、`npm run test:quick`、`npm run test:complete`、`npm run test:session-bridge`。
 
 ## 更多参考
 

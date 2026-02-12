@@ -1,6 +1,6 @@
-# MessageBridge
+# MessageBridge（青鸟）
 
-AI 智能体的多渠道消息桥梁，实现「发消息」与「等回复」，支持与 AI 对话闭环。**当前已实现飞书；钉钉、企微等欢迎社区共建。**
+AI 智能体的多渠道消息桥梁，实现「发消息」与「等回复」，支持与 AI 对话闭环。**对外可称「青鸟」**。当前已实现飞书；钉钉、企微等欢迎社区共建。
 
 A multi-channel message bridge for AI agents: send messages and wait for replies. **Feishu is implemented; DingTalk, WeCom, etc. welcome community contributions.**
 

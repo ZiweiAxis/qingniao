@@ -37,15 +37,16 @@ function prompt(question: string, opts?: { mask?: boolean }): Promise<string> {
   });
 }
 
-/** 默认单轮等待秒数，取 Node setTimeout 上限（约 24.8 天），相当于无限大。可通过 FEISHU_TURN_TIMEOUT 或 --timeout 覆盖。 */
+/** 默认单轮等待秒数：12 小时。可通过 FEISHU_TURN_TIMEOUT 或 --timeout 覆盖；0 或 -1 表示用 MAX_SAFE_TIMEOUT_SEC。 */
+const DEFAULT_TIMEOUT_SEC = 12 * 3600; // 12h
 const MAX_SAFE_TIMEOUT_SEC = 2147483; // 2^31-1 ms / 1000，Node 不溢出
-const FEISHU_TURN_TIMEOUT = parseInt(process.env.FEISHU_TURN_TIMEOUT || String(MAX_SAFE_TIMEOUT_SEC), 10);
+const FEISHU_TURN_TIMEOUT = parseInt(process.env.FEISHU_TURN_TIMEOUT || String(DEFAULT_TIMEOUT_SEC), 10);
 const CONFIG_DIR = path.join(os.homedir(), ".message-bridge");
 const CONFIG_PATH = path.join(CONFIG_DIR, "config.json");
 
 /** 配对成功后发到飞书的引导文案（面向用户，与 SKILL 中「会话切换到飞书」说明一致） */
 const FEISHU_PAIRING_SUCCESS_GUIDE =
-  "配对成功！已自动保存本会话，下次在 Cursor/Codex 里你只要说「切换到飞书」「切到飞书」或「离开一会」，就可以把对话切到这里继续和我对话；说「结束」或「切回」则切回。";
+  "配对成功！已自动保存本会话，下次在 Cursor/Codex 里你只要说「切换到飞书」「切到飞书」或「离开一会」，就可以把对话切到这里继续和青鸟对话；说「结束」或「切回」则切回。";
 
 /** 每轮返回给调用方的会话提示，避免 Cursor 等忘记 in-loop 约束自动退出。不做内容匹配，是否结束由调用方根据语义判断。 */
 const SESSION_HINT_CONTINUE =
@@ -180,7 +181,7 @@ async function checkEnv(): Promise<void> {
 
 function help(): void {
   console.log(`
-skill-message-bridge — 飞书/钉钉/企微 消息桥梁（npx 优先，无需安装）
+skill-message-bridge（青鸟）— 飞书/钉钉/企微 消息桥梁（npx 优先，无需安装）
 
 用法:
   npx skill-message-bridge <消息>              发到飞书并等待回复（默认 notify）
