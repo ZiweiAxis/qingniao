@@ -1,4 +1,5 @@
-# 发布 npm：仅在有版本 tag 时触发；使用 OIDC 免存 NPM_TOKEN
+# 发布 npm：仅在有版本 tag 时触发
+# 需在仓库 Settings → Secrets → Actions 中配置 NPM_TOKEN（npm 后台生成的 Automation 类型 token，免 2FA OTP）
 # 用法：改好 version → commit & push → git tag v0.1.2 && git push origin v0.1.2
 name: Publish to npm
 
@@ -10,10 +11,6 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write   # OIDC 交换临时 token 发布，无需 NPM_TOKEN
-
     steps:
       - uses: actions/checkout@v4
 
@@ -28,4 +25,6 @@ jobs:
         run: npm ci
 
       - name: Publish
-        run: npm publish --provenance --access public
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
