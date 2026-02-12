@@ -40,10 +40,53 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
 const os = __importStar(require("os"));
+const readline = __importStar(require("readline"));
 const mb = __importStar(require("./index"));
+function prompt(question, opts) {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    return new Promise((resolve) => {
+        if (opts?.mask) {
+            // 密文输入（例如 App Secret）：不回显实际字符，仅显示 *
+            // 提示文案使用 console.log 打印，避免被覆盖
+            console.log(question);
+            // 覆盖输出逻辑，将用户输入的可见字符替换为 *
+            rl._writeToOutput = function (stringToWrite) {
+                if (stringToWrite.includes("\n") || stringToWrite.includes("\r")) {
+                    process.stdout.write(stringToWrite);
+                }
+                else {
+                    process.stdout.write("*");
+                }
+            };
+            rl.question("", (answer) => {
+                rl.close();
+                resolve((answer || "").trim());
+            });
+        }
+        else {
+            rl.question(question, (answer) => {
+                rl.close();
+                resolve((answer || "").trim());
+            });
+        }
+    });
+}
 const FEISHU_TURN_TIMEOUT = parseInt(process.env.FEISHU_TURN_TIMEOUT || "3600", 10);
 const CONFIG_DIR = path.join(os.homedir(), ".message-bridge");
 const CONFIG_PATH = path.join(CONFIG_DIR, "config.json");
+/** 配对成功后发到飞书的引导文案（面向用户，与 SKILL 中「会话切换到飞书」说明一致） */
+const FEISHU_PAIRING_SUCCESS_GUIDE = "配对成功！已自动保存本会话，下次在 Cursor/Codex 里你只要说「切换到飞书」「切到飞书」或「离开一会」，就可以把对话切到这里继续和我对话；说「结束」或「切回」则切回。";
+/** 每轮返回给调用方的会话提示，避免 Cursor 等忘记 in-loop 约束自动退出 */
+const SESSION_HINT_CONTINUE = "用户未说「结束」或「切回」前请继续循环发消息，勿退出飞书会话。";
+const SESSION_HINT_END = "用户已说结束/切回，可退出飞书会话。";
+function sessionHint(status, reply) {
+    if (status !== "replied" || !reply)
+        return SESSION_HINT_CONTINUE;
+    const t = reply.trim();
+    if (/结束|切回/.test(t))
+        return SESSION_HINT_END;
+    return SESSION_HINT_CONTINUE;
+}
 function loadConfigFile() {
     try {
         const raw = fs.readFileSync(CONFIG_PATH, "utf8");
@@ -97,7 +140,23 @@ function parseTimeout(argv) {
     }
     return FEISHU_TURN_TIMEOUT;
 }
-function checkEnv() {
+async function verifyFeishuCredentials(appId, appSecret) {
+    try {
+        const res = await fetch("https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ app_id: appId, app_secret: appSecret }),
+        });
+        const data = (await res.json());
+        if (data.code === 0)
+            return { ok: true };
+        return { ok: false, message: data.msg || "获取 token 失败" };
+    }
+    catch (e) {
+        return { ok: false, message: e.message };
+    }
+}
+async function checkEnv() {
     const cfg = mb.getConfig();
     const appId = process.env.FEISHU_APP_ID || process.env.DITING_FEISHU_APP_ID || cfg.appId;
     const appSecret = process.env.FEISHU_APP_SECRET || process.env.DITING_FEISHU_APP_SECRET || cfg.appSecret;
@@ -108,7 +167,19 @@ function checkEnv() {
     console.log("飞书配置自检\n");
     console.log("  App ID:", ok(appId) ? mask(appId) + " ✓" + fromFile : "未设置 ✗");
     console.log("  App Secret:", ok(appSecret) ? "*** ✓" + fromFile : "未设置 ✗");
-    console.log("  Chat ID (群聊):", ok(chatId) ? mask(chatId) + " ✓" : "未设置 ✗");
+    console.log("  Chat ID (群聊/私聊会话):", ok(chatId) ? mask(chatId) + " ✓" : "未设置 ✗");
+    if (ok(appId) && ok(appSecret) && !ok(chatId)) {
+        const verify = await verifyFeishuCredentials(appId, appSecret);
+        if (!verify.ok) {
+            console.log("\n  凭证校验: ✗ 无效或网络错误");
+            console.log("  当前使用的 App ID:", appId);
+            console.log("  App Secret 长度:", appSecret.length, "字符");
+            console.log("  飞书返回错误:", verify.message || "(无详情)");
+            console.log("\n❌ 请核对飞书开放平台「凭证与基础信息」中的 App ID / App Secret，或检查网络。");
+            process.exit(1);
+        }
+        console.log("  凭证校验: ✓ 有效（仅缺 Chat ID）");
+    }
     const allOk = ok(appId) && ok(appSecret) && ok(chatId);
     if (allOk) {
         console.log("\n✅ 配置完整。可运行: npx skill-message-bridge send \"测试\"");
@@ -116,7 +187,12 @@ function checkEnv() {
     }
     else {
         console.log("\n❌ 请补全上述缺失项。");
-        console.log("  使用 npx 配置: npx skill-message-bridge config set feishu --app-id=xxx --app-secret=xxx");
+        if (!ok(appId) || !ok(appSecret)) {
+            console.log("  使用 npx 配置: npx skill-message-bridge config set feishu --app-id=xxx --app-secret=xxx");
+        }
+        else {
+            console.log("  获取 Chat ID: npx skill-message-bridge connect，在群聊或私聊中向机器人发一条消息后按提示保存。");
+        }
         console.log("  完整步骤见 docs/ONBOARDING-FEISHU.md");
         process.exit(1);
     }
@@ -130,10 +206,10 @@ skill-message-bridge — 飞书/钉钉/企微 消息桥梁（npx 优先，无需
   npx skill-message-bridge notify <消息> [--timeout=N]  同上，可指定超时秒数
   npx skill-message-bridge send <消息>        只发送，不等待回复
   npx skill-message-bridge check-env          检查配置（环境变量或 ~/.message-bridge/config.json）
-  npx skill-message-bridge config set feishu --app-id=xxx --app-secret=xxx [--chat-id=xxx]  写入配置文件
+  npx skill-message-bridge config set feishu [--app-id=xxx] [--app-secret=xxx] [--chat-id=xxx]  写入配置（缺省项可交互输入）
   npx skill-message-bridge config show        查看当前配置（脱敏）
   npx skill-message-bridge config path       显示配置文件路径
-  npx skill-message-bridge connect           启动长连接，收到首条消息后输出 chat_id 并提示保存
+  npx skill-message-bridge connect           启动长连接，收到首条消息（群聊或私聊）后输出 chat_id 并提示保存
   npx skill-message-bridge --help | -h       本帮助
 
 配置: 优先使用环境变量 FEISHU_* / DITING_FEISHU_*；否则使用 ~/.message-bridge/config.json
@@ -149,7 +225,7 @@ async function main() {
         return;
     }
     if (a0 === "check-env") {
-        checkEnv();
+        await checkEnv();
         return;
     }
     if (a0 === "config") {
@@ -160,20 +236,103 @@ async function main() {
                 console.error("当前仅支持 feishu。其他 channel 请到 GitHub 提 issue：https://github.com/hulk-yin/message-bridge/issues");
                 process.exit(1);
             }
-            const opts = parseConfigSetArgs(argv);
+            let opts = parseConfigSetArgs(argv);
+            const hasAnyArg = (opts.appId && opts.appId.length > 0) || (opts.appSecret && opts.appSecret.length > 0) || (opts.chatId && opts.chatId.length > 0);
+            if (!hasAnyArg && !process.stdin.isTTY) {
+                console.error("未检测到交互终端，未传入任何参数。");
+                console.error("要看到「请输入 App ID」等交互式引导，请在本机终端中亲自执行（不要通过助手代跑）：");
+                console.error("  cd " + path.dirname(__dirname) + " && npm run dev:cli -- config set feishu");
+                console.error("或直接传参：npx skill-message-bridge config set feishu --app-id=xxx --app-secret=xxx [--chat-id=xxx]");
+                process.exit(1);
+            }
             const data = loadConfigFile();
             if (!data.feishu)
                 data.feishu = {};
-            if (opts.appId !== undefined)
+            const existing = data.feishu;
+            const mask = (v) => (v && v.length > 8 ? v.slice(0, 4) + "***" + v.slice(-2) : v && v.length > 0 ? v.slice(0, 2) + "***" : "");
+            if (process.stdin.isTTY && !hasAnyArg) {
+                console.log("未传入参数，进入交互式输入（已有项直接回车保留）\n");
+            }
+            if (process.stdin.isTTY) {
+                if (opts.appId === undefined || opts.appId === "") {
+                    const label = existing.appId ? `请输入 App ID (当前: ${mask(existing.appId)}，直接回车保留): ` : "请输入 App ID: ";
+                    const answer = (await prompt(label)).trim();
+                    opts.appId = answer || existing.appId || "";
+                }
+                if (opts.appSecret === undefined || opts.appSecret === "") {
+                    const label = existing.appSecret ? "请输入 App Secret (已设置，直接回车保留): " : "请输入 App Secret: ";
+                    const answer = (await prompt(label, { mask: true })).trim();
+                    opts.appSecret = answer || existing.appSecret || "";
+                }
+                if (opts.chatId === undefined || opts.chatId === "") {
+                    if (existing.chatId) {
+                        const label = `当前已配置 Chat ID (${mask(existing.chatId)})。直接回车保留，输入 1 或 new 重新配对: `;
+                        const answer = (await prompt(label)).trim().toLowerCase();
+                        if (answer === "1" || answer === "new") {
+                            opts.chatId = ""; // 表示要求重新配对，下面会清空并进入 connect
+                        }
+                        else if (answer) {
+                            opts.chatId = answer;
+                        }
+                        else {
+                            opts.chatId = existing.chatId;
+                        }
+                    }
+                    else {
+                        const chatId = await prompt("请输入 Chat ID（可选，直接回车则进入配对获取）: ");
+                        if (chatId)
+                            opts.chatId = chatId.trim();
+                    }
+                }
+            }
+            if (!data.feishu)
+                data.feishu = {};
+            if (opts.appId !== undefined && opts.appId !== "")
                 data.feishu.appId = opts.appId;
-            if (opts.appSecret !== undefined)
+            if (opts.appSecret !== undefined && opts.appSecret !== "")
                 data.feishu.appSecret = opts.appSecret;
-            if (opts.chatId !== undefined)
-                data.feishu.chatId = opts.chatId;
+            if (opts.chatId !== undefined) {
+                if (opts.chatId === "")
+                    delete data.feishu.chatId;
+                else if (opts.chatId)
+                    data.feishu.chatId = opts.chatId;
+            }
             saveConfigFile(data);
             console.log("已写入 " + CONFIG_PATH);
-            if (opts.chatId)
+            if (opts.chatId && opts.chatId !== "") {
                 console.log("chat_id 已保存，可运行 npx skill-message-bridge send \"测试\" 验证。");
+                process.exit(0);
+            }
+            if (process.stdin.isTTY) {
+                console.log("\n" + (existing.chatId && (opts.chatId === "" || !opts.chatId) ? "将重新配对会话。" : "尚未配置 Chat ID，") + "接下来将自动进入 connect 模式以获取 chat_id。\n");
+                mb.runConnectMode()
+                    .then(async (chatId) => {
+                    try {
+                        await mb.send({ message: FEISHU_PAIRING_SUCCESS_GUIDE, groupId: chatId });
+                    }
+                    catch {
+                        // 发送引导失败仍自动保存并提示
+                    }
+                    const cfg = loadConfigFile();
+                    if (!cfg.feishu)
+                        cfg.feishu = {};
+                    cfg.feishu.chatId = chatId;
+                    saveConfigFile(cfg);
+                    console.log("\n已收到首条消息，会话 chat_id（群聊/私聊均可）:", chatId);
+                    console.log("已自动保存到 " + CONFIG_PATH + "，可运行 npx skill-message-bridge send \"测试\" 验证。");
+                    mb.close();
+                    process.exit(0);
+                })
+                    .catch((err) => {
+                    console.error("连接或接收失败:", err.message);
+                    console.log("若无法收到消息，请先在飞书开放平台完成「事件订阅」→ 选择「长连接」→ 订阅 im.message.receive_v1。");
+                    mb.close();
+                    process.exit(1);
+                });
+                return;
+            }
+            // 非交互环境下，仅提醒后退出
+            console.log("尚未配置 Chat ID。可稍后运行: npx skill-message-bridge connect，在群聊或私聊中向机器人发送任意一条消息后按提示保存。");
             process.exit(0);
         }
         if (sub === "show") {
@@ -194,11 +353,22 @@ async function main() {
         process.exit(1);
     }
     if (a0 === "connect") {
-        console.log("正在启动飞书长连接，请在飞书群中 @机器人 发送任意一条消息…\n");
+        console.log("正在启动飞书长连接…\n");
         mb.runConnectMode()
-            .then((chatId) => {
-            console.log("\n已收到首条消息，群聊 chat_id:", chatId);
-            console.log("请保存到配置: npx skill-message-bridge config set feishu --chat-id=" + chatId);
+            .then(async (chatId) => {
+            try {
+                await mb.send({ message: FEISHU_PAIRING_SUCCESS_GUIDE, groupId: chatId });
+            }
+            catch {
+                // 发送引导失败仍自动保存并提示
+            }
+            const cfg = loadConfigFile();
+            if (!cfg.feishu)
+                cfg.feishu = {};
+            cfg.feishu.chatId = chatId;
+            saveConfigFile(cfg);
+            console.log("\n已收到首条消息，会话 chat_id（群聊/私聊均可）:", chatId);
+            console.log("已自动保存到 " + CONFIG_PATH + "，可运行 npx skill-message-bridge send \"测试\" 验证。");
             mb.close();
             process.exit(0);
         })
@@ -243,6 +413,7 @@ async function main() {
                 status: result.status || "error",
                 reply: result.reply || "",
                 replyUser: result.replyUser || "",
+                sessionHint: sessionHint(result.status || "error", result.reply || ""),
             };
             if (result.error)
                 out.error = result.error;
@@ -250,7 +421,7 @@ async function main() {
             process.exit(result.status === "replied" ? 0 : 1);
         }
         catch (err) {
-            console.log(JSON.stringify({ status: "error", reply: "", error: err.message }));
+            console.log(JSON.stringify({ status: "error", reply: "", error: err.message, sessionHint: SESSION_HINT_CONTINUE }));
             process.exit(1);
         }
         finally {
@@ -269,6 +440,7 @@ async function main() {
             status: result.status || "error",
             reply: result.reply || "",
             replyUser: result.replyUser || "",
+            sessionHint: sessionHint(result.status || "error", result.reply || ""),
         };
         if (result.error)
             out.error = result.error;
@@ -276,7 +448,7 @@ async function main() {
         process.exit(result.status === "replied" ? 0 : 1);
     }
     catch (err) {
-        console.log(JSON.stringify({ status: "error", reply: "", error: err.message }));
+        console.log(JSON.stringify({ status: "error", reply: "", error: err.message, sessionHint: SESSION_HINT_CONTINUE }));
         process.exit(1);
     }
     finally {

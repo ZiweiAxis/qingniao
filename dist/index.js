@@ -129,6 +129,7 @@ async function init() {
     await new Promise((resolve) => setTimeout(resolve, 2000));
     isInitialized = true;
     console.log("[MessageBridge] 初始化完成");
+    console.log("[MessageBridge] 请到飞书群聊或私聊中向机器人发送任意一条消息，收到后我会在飞书回复并说明后续用法。");
 }
 async function notify(params) {
     const { message, platform = "feishu", userId, groupId, timeout = 60 } = params;

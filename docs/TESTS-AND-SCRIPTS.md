@@ -44,4 +44,5 @@
 | `dist/index.js` | 主入口（由 `src/index.ts` 编译），notify/send + 长连接；使用前需 `npm run build` |
 | `dist/cli.js` | CLI（由 `src/cli.ts` 编译），含 check-env、config、connect、send、notify、turn |
 
-环境变量自检请用：`npm run check-env`（即 `node dist/cli.js check-env`）。
+环境变量自检请用：`npm run check-env`（即 `node dist/cli.js check-env`）。  
+**源码级验证**（发布前）：用 `npm run dev:cli -- <子命令>`（即 `ts-node src/cli.ts`），例如 `npm run dev:cli -- check-env`、`npm run dev:cli -- connect`，验证通过后再 `npm run build` 发布。

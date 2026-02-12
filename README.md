@@ -43,7 +43,8 @@ npx skill-message-bridge "消息"           # 发并等回复
 npx skill-message-bridge --help
 ```
 
-在仓库内开发时：`npm install` → `npm run build` → `npm run test:quick`。
+在仓库内开发时：`npm install` → `npm run build` → `npm run test:quick`。  
+**源码级验证**（不构建 dist，直接跑 TS）：`npm run dev:cli -- check-env`、`npm run dev:cli -- connect` 等（等价于 `npx ts-node src/cli.ts <子命令>`），验证通过后再 `npm run build` 发布。
 
 ## 功能特性
 

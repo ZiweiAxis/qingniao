@@ -24,11 +24,13 @@
 
 ## 三、用 npx 写入 App ID / App Secret
 
-**无需安装**，在任意目录执行（将 `xxx` 替换为你的实际值）：
+**无需安装**。两种方式任选其一：
 
-```bash
-npx skill-message-bridge config set feishu --app-id=cli_xxxxxxxxxx --app-secret=你的AppSecret
-```
+- **方式 A（参数）**：在任意目录执行（将 `xxx` 替换为你的实际值）：
+  ```bash
+  npx skill-message-bridge config set feishu --app-id=cli_xxxxxxxxxx --app-secret=你的AppSecret
+  ```
+- **方式 B（交互式）**：要出现「请输入 App ID」等提示，需**在本机终端里亲自执行**（不要通过助手代跑）：在项目目录执行 `npm run dev:cli -- config set feishu`，按提示输入 App ID、App Secret、Chat ID（可回车跳过）。npx 或助手代跑时多为非 TTY，不会出现交互提示。
 
 配置会写入 **`~/.message-bridge/config.json`**。可执行 `npx skill-message-bridge config path` 查看路径，`npx skill-message-bridge config show` 查看当前配置（脱敏）。
 
@@ -80,11 +82,19 @@ npx skill-message-bridge connect
 
 官方说明：[使用长连接接收事件](https://open.feishu.cn/document/server-docs/event-subscription-guide/event-subscription-configure-/request-url-configuration-case-collection)。
 
-### 5.3 在群内发消息确认并保存 chat_id
+### 5.3 在群聊或私聊中发消息确认并保存 chat_id
 
+支持**群聊**与**私聊**两种方式，任选其一即可。
+
+**方式 A：群聊**
 1. 在飞书客户端**建群**（或使用已有群），并将**该应用添加为群机器人**（群设置 → 群机器人 → 添加机器人 → 选择你的应用）。
 2. 在该群内 **@你的机器人** 发送任意一条消息（例如「测试」）。
-3. 终端里运行中的 `npx skill-message-bridge connect` 会收到消息并输出**群聊 chat_id**（形如 `oc_xxxxxxxxxx`），并提示你执行：
+
+**方式 B：私聊**
+1. 在飞书客户端**与你的机器人发起私聊**（搜索应用名称或从「机器人」入口进入）。
+2. 在私聊窗口向机器人发送任意一条消息（例如「测试」）。
+
+3. 终端里运行中的 `npx skill-message-bridge connect` 会收到消息并输出**会话 chat_id**（群聊或私聊均可，形如 `oc_xxxxxxxxxx`），并提示你执行：
 
 ```bash
 npx skill-message-bridge config set feishu --chat-id=oc_xxxxxxxxxx
@@ -92,7 +102,7 @@ npx skill-message-bridge config set feishu --chat-id=oc_xxxxxxxxxx
 
 4. 执行上述命令后，即完成 chat_id 的保存。
 
-**若无法收到消息**：请先确认已在飞书后台完成 **事件订阅（长连接 + im.message.receive_v1）**；未配置长连接订阅时，无法收到群内消息。
+**若无法收到消息**：请先确认已在飞书后台完成 **事件订阅（长连接 + im.message.receive_v1）**；未配置长连接订阅时，无法收到消息。
 
 ---
 
@@ -118,9 +128,9 @@ npx skill-message-bridge "请回复测试" --timeout=60
 | 现象 | 可能原因 | 处理 |
 |------|----------|------|
 | 提示 appId / appSecret needed | 未写入配置或未设环境变量 | 使用 `npx skill-message-bridge config set feishu --app-id=xxx --app-secret=xxx` |
-| 收不到群内消息 / connect 无输出 | 未配置事件订阅或未选长连接 | 在飞书后台完成「事件订阅」→「长连接」→ 订阅 `im.message.receive_v1` |
-| 发消息 400 / 无权限 | 权限未开通或机器人未入群 | 按「四、权限配置」开通权限；把机器人加入目标群 |
-| 不知道 chat_id | 未运行 connect 或未在群内发消息 | 运行 `npx skill-message-bridge connect`，在群内 @机器人 发一条消息，按输出执行 `config set feishu --chat-id=xxx` |
+| 收不到消息 / connect 无输出 | 未配置事件订阅或未选长连接 | 在飞书后台完成「事件订阅」→「长连接」→ 订阅 `im.message.receive_v1` |
+| 发消息 400 / 无权限 | 权限未开通或机器人未入群/未私聊 | 按「四、权限配置」开通权限；群聊需把机器人加入目标群，私聊直接与机器人对话即可 |
+| 不知道 chat_id | 未运行 connect 或未发消息 | 运行 `npx skill-message-bridge connect`，在群聊或私聊中向机器人发一条消息，按输出执行 `config set feishu --chat-id=xxx` |
 
 ---
 
