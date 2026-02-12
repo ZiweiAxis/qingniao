@@ -1,6 +1,5 @@
-# 发布 npm：仅在有版本 tag 时自动执行，无需本地 npm publish
-# 用法：改好 package.json 的 version，commit 并 push，然后打 tag 并推送，例如：
-#   git tag v0.1.1 && git push origin v0.1.1
+# 发布 npm：仅在有版本 tag 时触发；使用 OIDC 免存 NPM_TOKEN
+# 用法：改好 version → commit & push → git tag v0.1.2 && git push origin v0.1.2
 name: Publish to npm
 
 on:
@@ -11,6 +10,10 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # OIDC 交换临时 token 发布，无需 NPM_TOKEN
+
     steps:
       - uses: actions/checkout@v4
 
@@ -18,13 +21,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
           registry-url: "https://registry.npmjs.org"
+          cache: "npm"
 
       - name: Install
         run: npm ci
 
       - name: Publish
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public
