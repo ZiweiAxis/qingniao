@@ -40,6 +40,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.description = exports.name = void 0;
 exports.getConfig = getConfig;
 exports.setFirstMessageResolver = setFirstMessageResolver;
+exports.waitNextMessage = waitNextMessage;
 exports.init = init;
 exports.notify = notify;
 exports.send = send;
@@ -72,6 +73,29 @@ function getConfig() {
 let firstMessageResolver = null;
 function setFirstMessageResolver(resolver) {
     firstMessageResolver = resolver;
+}
+let waitNextResolver = null;
+let waitNextTimer = null;
+function clearWaitNext() {
+    if (waitNextTimer)
+        clearTimeout(waitNextTimer);
+    waitNextTimer = null;
+    waitNextResolver = null;
+}
+/** 仅等待下一条消息，不向用户推送任何内容（用于心跳）。超时也 resolve 为 status "timeout"，与 notify 一致。 */
+function waitNextMessage(timeoutSec) {
+    const cap = Math.min(timeoutSec, 2147483);
+    return new Promise((resolve) => {
+        waitNextResolver = (r) => {
+            clearWaitNext();
+            resolve({ success: true, status: "replied", reply: r.reply, replyUser: r.replyUser });
+        };
+        waitNextTimer = setTimeout(() => {
+            clearWaitNext();
+            resolve({ success: true, status: "timeout", error: "Timeout waiting for reply" });
+        }, cap * 1000);
+        init();
+    });
 }
 let httpClient = null;
 let wsClient = null;
@@ -112,6 +136,10 @@ async function init() {
                 if (firstMessageResolver && chatId) {
                     firstMessageResolver(chatId);
                     firstMessageResolver = null;
+                }
+                else if (waitNextResolver) {
+                    waitNextResolver({ reply: text, replyUser: senderId });
+                    clearWaitNext();
                 }
             }
             catch (error) {
@@ -239,6 +267,7 @@ exports.default = {
     getConfig,
     runConnectMode,
     setFirstMessageResolver,
+    waitNextMessage,
     name: exports.name,
     description: exports.description,
 };

@@ -34,6 +34,8 @@ export declare function getConfig(): {
     chatId: string;
 };
 export declare function setFirstMessageResolver(resolver: (chatId: string) => void): void;
+/** 仅等待下一条消息，不向用户推送任何内容（用于心跳）。超时也 resolve 为 status "timeout"，与 notify 一致。 */
+export declare function waitNextMessage(timeoutSec: number): Promise<NotifyResult>;
 export declare function init(): Promise<void>;
 export declare function notify(params: NotifyParams): Promise<NotifyResult>;
 export declare function send(params: SendParams): Promise<SendResult>;
@@ -49,6 +51,7 @@ declare const _default: {
     getConfig: typeof getConfig;
     runConnectMode: typeof runConnectMode;
     setFirstMessageResolver: typeof setFirstMessageResolver;
+    waitNextMessage: typeof waitNextMessage;
     name: string;
     description: string;
 };

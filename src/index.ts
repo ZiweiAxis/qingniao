@@ -81,6 +81,29 @@ export function setFirstMessageResolver(resolver: (chatId: string) => void): voi
   firstMessageResolver = resolver;
 }
 
+let waitNextResolver: ((r: { reply: string; replyUser: string }) => void) | null = null;
+let waitNextTimer: ReturnType<typeof setTimeout> | null = null;
+function clearWaitNext(): void {
+  if (waitNextTimer) clearTimeout(waitNextTimer);
+  waitNextTimer = null;
+  waitNextResolver = null;
+}
+/** 仅等待下一条消息，不向用户推送任何内容（用于心跳）。超时也 resolve 为 status "timeout"，与 notify 一致。 */
+export function waitNextMessage(timeoutSec: number): Promise<NotifyResult> {
+  const cap = Math.min(timeoutSec, 2147483);
+  return new Promise((resolve) => {
+    waitNextResolver = (r) => {
+      clearWaitNext();
+      resolve({ success: true, status: "replied", reply: r.reply, replyUser: r.replyUser });
+    };
+    waitNextTimer = setTimeout(() => {
+      clearWaitNext();
+      resolve({ success: true, status: "timeout", error: "Timeout waiting for reply" });
+    }, cap * 1000);
+    init();
+  });
+}
+
 let httpClient: lark.Client | null = null;
 let wsClient: lark.WSClient | null = null;
 let eventDispatcher: lark.EventDispatcher | null = null;
@@ -129,6 +152,9 @@ export async function init(): Promise<void> {
         if (firstMessageResolver && chatId) {
           firstMessageResolver(chatId);
           firstMessageResolver = null;
+        } else if (waitNextResolver) {
+          waitNextResolver({ reply: text, replyUser: senderId });
+          clearWaitNext();
         }
       } catch (error) {
         console.error("[MessageBridge] 处理消息失败:", (error as Error).message);
@@ -270,6 +296,7 @@ export default {
   getConfig,
   runConnectMode,
   setFirstMessageResolver,
+  waitNextMessage,
   name,
   description,
 };

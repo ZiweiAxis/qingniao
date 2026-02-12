@@ -217,7 +217,8 @@ npx skill-message-bridge "<AI 的回复内容>"
 ```
 
 - 把内容发到飞书并等待用户回复。
-- 输出单行 JSON：`{"status":"replied","reply":"用户回复", "replyUser":"?", "sessionHint":"..."}`；超时为 `"status":"timeout"`。**`sessionHint`**：提醒调用方是否应继续循环——为「用户未说「结束」或「切回」前请继续循环发消息，勿退出飞书会话」时**必须继续发下一条**，勿退出；为「用户已说结束/切回，可退出飞书会话」时可退出。Cursor 等工具请解析并遵守 `sessionHint`，避免忘记 in-loop 约束自动退出。
+- 输出单行 JSON：`{"status":"replied","reply":"用户回复", "replyUser":"?", "sessionHint":"..."}`；超时为 `"status":"timeout"`。**`sessionHint`**：固定为「用户未说「结束」或「切回」前请继续循环发消息，勿退出飞书会话」。是否退出由调用方根据用户回复语义（如明确说「结束」「切回」）自行判断，本 skill 不做内容匹配以免误判。
+- **会话回复后自动补一句给调用方**（stderr）：`[MessageBridge] 请根据 sessionHint 继续发下一条消息到飞书，勿退出会话。` 是否结束由调用方根据用户语义（如「结束」「切回」）自行判断，本 skill 不做内容匹配以免误判。
 - 超时：默认 `FEISHU_TURN_TIMEOUT=3600`（秒）；可用 `--timeout=N` 覆盖。单轮超时后不要退出闭环，发「等待超时，如需继续请直接回复」并再次等待。
 
 **闭环**：循环执行「AI 生成回复 → 调用 `npx skill-message-bridge "<内容>"`（或 `npm run turn -- "<内容>"`）→ 解析 reply 与 **sessionHint** → 再生成 → 再调用」；仅当 sessionHint 提示可退出或用户说「结束」/「切回」时退出，不设轮数上限，永远 loop。

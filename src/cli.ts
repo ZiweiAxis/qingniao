@@ -37,7 +37,9 @@ function prompt(question: string, opts?: { mask?: boolean }): Promise<string> {
   });
 }
 
-const FEISHU_TURN_TIMEOUT = parseInt(process.env.FEISHU_TURN_TIMEOUT || "3600", 10);
+/** 默认单轮等待秒数，取 Node setTimeout 上限（约 24.8 天），相当于无限大。可通过 FEISHU_TURN_TIMEOUT 或 --timeout 覆盖。 */
+const MAX_SAFE_TIMEOUT_SEC = 2147483; // 2^31-1 ms / 1000，Node 不溢出
+const FEISHU_TURN_TIMEOUT = parseInt(process.env.FEISHU_TURN_TIMEOUT || String(MAX_SAFE_TIMEOUT_SEC), 10);
 const CONFIG_DIR = path.join(os.homedir(), ".message-bridge");
 const CONFIG_PATH = path.join(CONFIG_DIR, "config.json");
 
@@ -45,16 +47,17 @@ const CONFIG_PATH = path.join(CONFIG_DIR, "config.json");
 const FEISHU_PAIRING_SUCCESS_GUIDE =
   "配对成功！已自动保存本会话，下次在 Cursor/Codex 里你只要说「切换到飞书」「切到飞书」或「离开一会」，就可以把对话切到这里继续和我对话；说「结束」或「切回」则切回。";
 
-/** 每轮返回给调用方的会话提示，避免 Cursor 等忘记 in-loop 约束自动退出 */
+/** 每轮返回给调用方的会话提示，避免 Cursor 等忘记 in-loop 约束自动退出。不做内容匹配，是否结束由调用方根据语义判断。 */
 const SESSION_HINT_CONTINUE =
   "用户未说「结束」或「切回」前请继续循环发消息，勿退出飞书会话。";
-const SESSION_HINT_END = "用户已说结束/切回，可退出飞书会话。";
 
-function sessionHint(status: string, reply: string): string {
-  if (status !== "replied" || !reply) return SESSION_HINT_CONTINUE;
-  const t = reply.trim();
-  if (/结束|切回/.test(t)) return SESSION_HINT_END;
+function sessionHint(_status: string, _reply: string): string {
   return SESSION_HINT_CONTINUE;
+}
+
+/** 会话回复后自动补一句给调用方（Cursor 等）的提醒。输出到 stderr，不破坏 stdout 单行 JSON。 */
+function printSessionReminder(): void {
+  process.stderr.write("[MessageBridge] 请根据 sessionHint 继续发下一条消息到飞书，勿退出会话。\n");
 }
 
 function loadConfigFile(): { feishu?: { appId?: string; appSecret?: string; chatId?: string } } {
@@ -99,13 +102,22 @@ function getMessageFromArgv(argv: string[], afterSubcommand: number): string {
 }
 
 function parseTimeout(argv: string[]): number {
+  let sec = FEISHU_TURN_TIMEOUT;
   for (let i = 2; i < argv.length; i++) {
-    if (argv[i] === "--timeout" && argv[i + 1] != null)
-      return parseInt(argv[i + 1], 10) || 60;
-    if (argv[i].startsWith("--timeout="))
-      return parseInt(argv[i].replace(/^--timeout=/, ""), 10) || 60;
+    if (argv[i] === "--timeout" && argv[i + 1] != null) {
+      sec = parseInt(argv[i + 1], 10);
+      if (sec <= 0) sec = MAX_SAFE_TIMEOUT_SEC; // 0 或 -1 表示永不过期
+      else if (Number.isNaN(sec)) sec = 60;
+      break;
+    }
+    if (argv[i].startsWith("--timeout=")) {
+      sec = parseInt(argv[i].replace(/^--timeout=/, ""), 10);
+      if (sec <= 0) sec = MAX_SAFE_TIMEOUT_SEC;
+      else if (Number.isNaN(sec)) sec = 60;
+      break;
+    }
   }
-  return FEISHU_TURN_TIMEOUT;
+  return Math.min(sec, MAX_SAFE_TIMEOUT_SEC);
 }
 
 async function verifyFeishuCredentials(appId: string, appSecret: string): Promise<{ ok: boolean; message?: string }> {
@@ -173,6 +185,7 @@ skill-message-bridge — 飞书/钉钉/企微 消息桥梁（npx 优先，无需
 用法:
   npx skill-message-bridge <消息>              发到飞书并等待回复（默认 notify）
   npx skill-message-bridge notify <消息> [--timeout=N]  同上，可指定超时秒数
+  npx skill-message-bridge --heartbeat [--timeout=N]  仅等待下一条消息，不向飞书推送（心跳）
   npx skill-message-bridge send <消息>        只发送，不等待回复
   npx skill-message-bridge check-env          检查配置（环境变量或 ~/.message-bridge/config.json）
   npx skill-message-bridge config set feishu [--app-id=xxx] [--app-secret=xxx] [--chat-id=xxx]  写入配置（缺省项可交互输入）
@@ -381,9 +394,37 @@ async function main(): Promise<void> {
       };
       if (result.error) out.error = result.error;
       console.log(JSON.stringify(out));
+      printSessionReminder();
       process.exit(result.status === "replied" ? 0 : 1);
     } catch (err) {
-      console.log(JSON.stringify({ status: "error", reply: "", error: (err as Error).message, sessionHint: SESSION_HINT_CONTINUE }));
+      const errOut = { status: "error", reply: "", error: (err as Error).message, sessionHint: SESSION_HINT_CONTINUE };
+      console.log(JSON.stringify(errOut));
+      printSessionReminder();
+      process.exit(1);
+    } finally {
+      mb.close();
+    }
+    return;
+  }
+
+  if (argv.includes("--heartbeat")) {
+    const timeout = parseTimeout(argv);
+    try {
+      const result = await mb.waitNextMessage(timeout);
+      const out: Record<string, string> = {
+        status: result.status || "error",
+        reply: result.reply || "",
+        replyUser: result.replyUser || "",
+        sessionHint: SESSION_HINT_CONTINUE,
+      };
+      if (result.error) out.error = result.error;
+      console.log(JSON.stringify(out));
+      printSessionReminder();
+      process.exit(result.status === "replied" ? 0 : 1);
+    } catch (err) {
+      const errOut = { status: "error", reply: "", error: (err as Error).message, sessionHint: SESSION_HINT_CONTINUE };
+      console.log(JSON.stringify(errOut));
+      printSessionReminder();
       process.exit(1);
     } finally {
       mb.close();
@@ -406,9 +447,12 @@ async function main(): Promise<void> {
     };
     if (result.error) out.error = result.error;
     console.log(JSON.stringify(out));
+    printSessionReminder();
     process.exit(result.status === "replied" ? 0 : 1);
   } catch (err) {
-    console.log(JSON.stringify({ status: "error", reply: "", error: (err as Error).message, sessionHint: SESSION_HINT_CONTINUE }));
+    const errOut = { status: "error", reply: "", error: (err as Error).message, sessionHint: SESSION_HINT_CONTINUE };
+    console.log(JSON.stringify(errOut));
+    printSessionReminder();
     process.exit(1);
   } finally {
     mb.close();
