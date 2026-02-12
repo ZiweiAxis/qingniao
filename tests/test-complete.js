@@ -1,5 +1,6 @@
 // MessageBridge Skill - 完整功能测试
-const messageBridge = require("./index.js");
+const path = require("path");
+const messageBridge = require(path.join(__dirname, "..", "dist", "index.js"));
 
 async function testNotify() {
   console.log("🧪 测试 notify() - 发送消息并等待回复\n");

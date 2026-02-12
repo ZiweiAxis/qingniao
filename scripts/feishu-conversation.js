@@ -3,8 +3,8 @@
  * 飞书对话模式：用户在飞书发消息 → 本脚本收事件 → 调 AI 得到回复 → 在同一会话回飞书
  * 使用现有飞书机器人（FEISHU_APP_ID / FEISHU_APP_SECRET / FEISHU_CHAT_ID）。
  *
- * 启动：在 message-bridge 目录下
- *   node feishu-conversation.js
+ * 启动：在项目根目录
+ *   npm run conversation  或  node scripts/feishu-conversation.js
  *
  * 环境变量：
  *   FEISHU_APP_ID / FEISHU_APP_SECRET（必填）

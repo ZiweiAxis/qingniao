@@ -13,7 +13,7 @@ We welcome contributions. The project supports multiple channels (Feishu impleme
 
 ### 步骤
 1. Fork 本仓库，在个人 fork 上创建分支（如 `feature/dingtalk` 或 `fix/xxx`）。
-2. 修改后在本机运行 `npm run build:dist`（若有改 src）及现有测试（如 `node test-quick.js`）。
+2. 修改后在本机运行 `npm run build`（若有改 src）及现有测试（如 `npm run test:quick`）。
 3. 提交信息建议格式：`类型: 简短描述`（如 `feat: 钉钉发送与等待回复`、`docs: README 英文版`）。
 4. 向本仓库发起 Pull Request，描述变更与自测结果。
 5. 维护者 Review 后合并。
@@ -41,7 +41,7 @@ We welcome contributions. The project supports multiple channels (Feishu impleme
 - [ ] **2. 注册适配器**  
   在 `src/index.ts`（或统一平台注册处）根据 `platform` 参数选择对应 adapter，保持 `notify(params)` / `send(params)` 的 `platform` 入参生效。
 - [ ] **3. Turn 脚本**  
-  新增 `dist/<channel>-turn.js`（可参考 `feishu-turn.js`）：读环境变量、调 `notify({ message, timeout })`、stdout 最后一行为单行 JSON `{"status":"replied"|"timeout"|"error","reply":"...","replyUser":"?"}`。
+  CLI 的 `turn` 子命令已统一单轮发+等回复；扩展新渠道时在 `src/cli.ts` 中增加对应逻辑，或复用 `notify({ message, timeout })`，stdout 最后一行为单行 JSON `{"status":"replied"|"timeout"|"error","reply":"...","replyUser":"?"}`。
 - [ ] **4. 环境变量**  
   在 README 与本文档中说明新渠道所需环境变量（如 `DINGTALK_APP_KEY`、`DINGTALK_APP_SECRET`、会话 ID 等）。
 - [ ] **5. 单测**  
@@ -61,8 +61,8 @@ We welcome contributions. The project supports multiple channels (Feishu impleme
 
 - **新功能**：应有对应单测（发送、收回复、超时、错误处理等，可 mock 网络）。
 - **新渠道**：至少覆盖「发送成功」或「模拟收到回复」一条路径。
-- **运行方式**：在项目根目录执行 `node test-quick.js` 或 `npm test`（以 package.json 为准）；CI 可在此基础上增加流水线。
-- **单测写法**：可参考现有 `test-quick.js`、`test-complete.js`；保持用例独立、不依赖外部未 mock 的服务。
+- **运行方式**：在项目根目录执行 `npm test`、`npm run test:quick`、`npm run test:complete` 等（以 package.json 为准）；CI 可在此基础上增加流水线。
+- **单测写法**：可参考现有 `tests/test-quick.js`、`tests/test-complete.js`；保持用例独立、不依赖外部未 mock 的服务。
 
 ---
 
@@ -82,7 +82,7 @@ We welcome contributions. The project supports multiple channels (Feishu impleme
 本项目欢迎由 AI 按文档完成的贡献（代码、文档、单测）。建议：
 
 - **推荐起点**：从「新渠道接入」或「文档/README 中英双语补全」类 issue 或任务入手。
-- **必读文件**：`README.md`、`CONTRIBUTING.md`（本文）、`src/platforms/feishu.ts`、`src/index.ts`、`feishu-turn.js` / `dist/feishu-turn.js`。
+- **必读文件**：`README.md`、`CONTRIBUTING.md`（本文）、`src/index.ts`、`src/cli.ts`。
 - **执行顺序**：按 CONTRIBUTING 中「步骤」与「可执行清单」逐条完成，并在 PR 中说明已完成项与验收结果。
 - **提交与 PR**：提交信息与 PR 描述请写清「做了什么、如何验证」，便于维护者 Review。
 
@@ -115,4 +115,4 @@ We welcome contributions. The project supports multiple channels (Feishu impleme
 - **New channel**: Add adapter in `src/platforms/`, register in index, add turn script and env docs, add tests, update README (EN+ZH).
 - **Testing**: New code should have tests; new channels need at least one test covering send or mock reply.
 - **Docs**: Structured (goal / steps / acceptance), checklists, examples; bilingual (EN+ZH) preferred.
-- **AI contributors**: Start from "new channel" or "docs i18n"; read README, CONTRIBUTING, `src/platforms/feishu.ts`, `src/index.ts`, turn script; follow checklists and state completion in PR.
+- **AI contributors**: Start from "new channel" or "docs i18n"; read README, CONTRIBUTING, `src/index.ts`, `src/cli.ts`, turn script; follow checklists and state completion in PR.

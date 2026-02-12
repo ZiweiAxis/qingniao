@@ -4,7 +4,8 @@
  * 演示如何在 Claude Code 中使用 Session Bridge 实现对话切换
  */
 
-const { getSessionBridge } = require("./session-bridge");
+const path = require("path");
+const { getSessionBridge } = require(path.join(__dirname, "..", "scripts", "session-bridge.js"));
 const readline = require("readline");
 
 // 创建终端输入接口

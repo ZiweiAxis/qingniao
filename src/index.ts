@@ -1,143 +1,274 @@
 /**
- * MessageBridge Skill - 主入口（支持 WebSocket）
+ * MessageBridge Skill - 统一实现（TypeScript）
+ * 使用飞书 WebSocket 长连接。配置：环境变量 或 ~/.message-bridge/config.json
  */
 
-import type { NotifyParams, NotifyResult, SendParams, SendResult } from "./types";
-import { messageQueue } from "./queue";
-import { getFeishuAdapter } from "./platforms/feishu";
+import * as lark from "@larksuiteoapi/node-sdk";
+import * as path from "path";
+import * as fs from "fs";
+import * as os from "os";
 
-// 初始化 WebSocket 连接
-let wsInitialized = false;
+export interface NotifyParams {
+  message: string;
+  platform?: string;
+  userId?: string;
+  groupId?: string;
+  timeout?: number;
+}
 
-async function ensureWebSocketConnected() {
-  if (!wsInitialized) {
-    const adapter = getFeishuAdapter();
-    await adapter.connect();
-    wsInitialized = true;
-    console.log("[MessageBridge] WebSocket 已连接");
+export interface NotifyResult {
+  success: boolean;
+  status: "replied" | "timeout" | "error";
+  reply?: string;
+  replyUser?: string;
+  timestamp?: string;
+  error?: string;
+}
+
+export interface SendParams {
+  message: string;
+  platform?: string;
+  userId?: string;
+  groupId?: string;
+}
+
+export interface SendResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+}
+
+interface PendingTask {
+  taskId: string;
+  message: string;
+  platform: string;
+  userId?: string;
+  groupId?: string;
+  timeout: number;
+  status: string;
+  createdAt: Date;
+  reply: string | null;
+  replyUser: string | null;
+  repliedAt: Date | null;
+  resolve?: (t: PendingTask) => void;
+  reject?: (err: Error) => void;
+}
+
+function loadConfigFromFile(): Record<string, string> {
+  const configPath = path.join(os.homedir(), ".message-bridge", "config.json");
+  try {
+    const raw = fs.readFileSync(configPath, "utf8");
+    const data = JSON.parse(raw) as { feishu?: Record<string, string> };
+    return data.feishu || {};
+  } catch {
+    return {};
   }
 }
 
-/**
- * 发送通知并等待用户回复
- */
+const fileCfg = loadConfigFromFile();
+const config = {
+  appId: process.env.FEISHU_APP_ID || process.env.DITING_FEISHU_APP_ID || fileCfg.appId || "",
+  appSecret: process.env.FEISHU_APP_SECRET || process.env.DITING_FEISHU_APP_SECRET || fileCfg.appSecret || "",
+  chatId: process.env.FEISHU_CHAT_ID || process.env.DITING_FEISHU_CHAT_ID || fileCfg.chatId || "",
+};
+
+export function getConfig(): { appId: string; appSecret: string; chatId: string } {
+  return { ...config };
+}
+
+let firstMessageResolver: ((chatId: string) => void) | null = null;
+export function setFirstMessageResolver(resolver: (chatId: string) => void): void {
+  firstMessageResolver = resolver;
+}
+
+let httpClient: lark.Client | null = null;
+let wsClient: lark.WSClient | null = null;
+let eventDispatcher: lark.EventDispatcher | null = null;
+let isInitialized = false;
+const pendingTasks = new Map<string, PendingTask>();
+
+export async function init(): Promise<void> {
+  if (isInitialized) return;
+
+  console.log("[MessageBridge] 初始化...");
+
+  httpClient = new lark.Client({
+    appId: config.appId,
+    appSecret: config.appSecret,
+    appType: lark.AppType.SelfBuild,
+    domain: lark.Domain.Feishu,
+  });
+
+  eventDispatcher = new lark.EventDispatcher({}).register({
+    "im.message.receive_v1": async (data: { message: Record<string, unknown> }) => {
+      const message = data.message as {
+        content: string;
+        sender?: { sender_id?: { open_id?: string; user_id?: string } };
+        chat_id?: string;
+        chat?: { chat_id?: string };
+      };
+      try {
+        const content = JSON.parse(message.content) as { text?: string };
+        const senderId = message.sender?.sender_id?.open_id || message.sender?.sender_id?.user_id || "unknown";
+        const text = content.text || "";
+        console.log(`[MessageBridge] 收到消息: ${text} (from ${senderId})`);
+
+        for (const [, task] of pendingTasks.entries()) {
+          if (task.status === "pending") {
+            task.reply = text;
+            task.replyUser = senderId;
+            task.status = "resolved";
+            task.repliedAt = new Date();
+            if (task.resolve) task.resolve(task);
+            console.log(`[MessageBridge] 任务 ${task.taskId} 已解决`);
+            break;
+          }
+        }
+
+        const chatId = message.chat_id || (message.chat && message.chat.chat_id) || (data as { chat_id?: string }).chat_id;
+        if (firstMessageResolver && chatId) {
+          firstMessageResolver(chatId);
+          firstMessageResolver = null;
+        }
+      } catch (error) {
+        console.error("[MessageBridge] 处理消息失败:", (error as Error).message);
+      }
+      return { code: 0 };
+    },
+  });
+
+  wsClient = new lark.WSClient({
+    appId: config.appId,
+    appSecret: config.appSecret,
+    loggerLevel: lark.LoggerLevel.error,
+  });
+
+  wsClient.start({ eventDispatcher: eventDispatcher! });
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+
+  isInitialized = true;
+  console.log("[MessageBridge] 初始化完成");
+}
+
 export async function notify(params: NotifyParams): Promise<NotifyResult> {
-  const {
+  const { message, platform = "feishu", userId, groupId, timeout = 60 } = params;
+
+  await init();
+
+  const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const task: PendingTask = {
+    taskId,
     message,
-    platform = "feishu",
+    platform,
     userId,
     groupId,
-    timeout = 3600,
-    priority = "normal",
-    messageType = "text",
-    title,
-  } = params;
+    timeout,
+    status: "pending",
+    createdAt: new Date(),
+    reply: null,
+    replyUser: null,
+    repliedAt: null,
+  };
+  pendingTasks.set(taskId, task);
 
   try {
-    // 确保 WebSocket 已连接
-    await ensureWebSocketConnected();
+    const targetId = groupId || config.chatId || userId || "";
+    const receiveIdType = groupId || config.chatId ? "chat_id" : "open_id";
+    console.log(`[MessageBridge] 发送消息 (${receiveIdType}): ${message}`);
 
-    // 创建任务
-    const task = messageQueue.createTask({
-      message,
-      platform,
-      userId,
-      groupId,
-      timeout,
-      priority,
-      messageType,
-      title,
+    const res = await httpClient!.im.message.create({
+      params: { receive_id_type: receiveIdType },
+      data: {
+        receive_id: targetId,
+        msg_type: "text",
+        content: JSON.stringify({ text: message }),
+      },
     });
 
-    // 发送消息
-    const adapter = getFeishuAdapter();
-    const messageId = await adapter.sendMessage(task);
-    
-    console.log(`[MessageBridge] 消息已发送: ${messageId}`);
+    if (res.code !== 0) throw new Error(`发送失败: ${res.msg}`);
+    const mid = (res as { data?: { message_id?: string } }).data?.message_id ?? "";
+    console.log(`[MessageBridge] 消息已发送: ${mid}`);
 
-    // 等待用户回复
-    try {
-      const completedTask = await messageQueue.waitForReply(task.taskId, timeout);
-
-      return {
-        success: true,
-        reply: completedTask.reply,
-        replyUser: completedTask.replyUser,
-        replyUserId: completedTask.replyUserId,
-        timestamp: completedTask.repliedAt?.toISOString(),
-        status: "replied",
-      };
-    } catch (error) {
-      // 超时
-      return {
-        success: true,
-        status: "timeout",
-        error: "Timeout waiting for user reply",
-      };
-    }
-  } catch (error) {
-    return {
-      success: false,
-      status: "error",
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-/**
- * 仅发送通知，不等待回复
- */
-export async function send(params: SendParams): Promise<SendResult> {
-  const {
-    message,
-    platform = "feishu",
-    userId,
-    groupId,
-    messageType = "text",
-    title,
-  } = params;
-
-  try {
-    const task = messageQueue.createTask({
-      message,
-      platform,
-      userId,
-      groupId,
-      timeout: 0,
-      priority: "normal",
-      messageType,
-      title,
+    const result = await new Promise<PendingTask>((resolve, reject) => {
+      task.resolve = resolve;
+      task.reject = reject;
+      setTimeout(() => {
+        if (task.status === "pending") {
+          task.status = "timeout";
+          reject(new Error("Timeout waiting for reply"));
+        }
+      }, timeout * 1000);
     });
 
-    const adapter = getFeishuAdapter();
-    const messageId = await adapter.sendMessage(task);
-
+    pendingTasks.delete(taskId);
     return {
       success: true,
-      messageId,
+      reply: result.reply || "",
+      replyUser: result.replyUser || "",
+      timestamp: result.repliedAt?.toISOString(),
+      status: "replied",
     };
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
+    pendingTasks.delete(taskId);
+    const msg = (error as Error).message;
+    if (msg.includes("Timeout")) {
+      return { success: true, status: "timeout", error: msg };
+    }
+    return { success: false, status: "error", error: msg };
   }
 }
 
-/**
- * 初始化 WebSocket 连接（可选，notify/send 会自动调用）
- */
-export async function init(): Promise<void> {
-  await ensureWebSocketConnected();
+export async function send(params: SendParams): Promise<SendResult> {
+  const { message, platform = "feishu", userId, groupId } = params;
+
+  await init();
+
+  try {
+    const targetId = groupId || config.chatId || userId || "";
+    const receiveIdType = groupId || config.chatId ? "chat_id" : "open_id";
+    console.log(`[MessageBridge] 发送消息 (${receiveIdType}): ${message}`);
+
+    const res = await httpClient!.im.message.create({
+      params: { receive_id_type: receiveIdType },
+      data: {
+        receive_id: targetId,
+        msg_type: "text",
+        content: JSON.stringify({ text: message }),
+      },
+    });
+
+    if (res.code !== 0) throw new Error(`发送失败: ${res.msg}`);
+    const messageId = (res as { data?: { message_id?: string } }).data?.message_id ?? "";
+    console.log(`[MessageBridge] 消息已发送: ${messageId}`);
+    return { success: true, messageId };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export function close(): void {
+  if (wsClient) console.log("[MessageBridge] 关闭连接");
+  isInitialized = false;
+}
+
+export function runConnectMode(): Promise<string> {
+  return new Promise((resolve) => {
+    setFirstMessageResolver(resolve);
+    init();
+  });
 }
 
 export const name = "messageBridge";
 export const description = "AI 智能体的消息桥梁，连接飞书/钉钉/企微，实现异步通知与确认";
 
 export default {
-  name,
-  description,
+  init,
   notify,
   send,
-  init,
+  close,
+  getConfig,
+  runConnectMode,
+  setFirstMessageResolver,
+  name,
+  description,
 };

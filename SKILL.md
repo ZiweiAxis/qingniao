@@ -72,7 +72,7 @@ npm install skill-message-bridge
 
 ```javascript
 const messageBridge = require("skill-message-bridge");
-// 或在本仓库根目录开发时: require("./index.js")
+// 或在本仓库根目录开发时: require("./dist/index.js")（需先 npm run build）
 ```
 
 ### 4.3 环境变量（飞书）
@@ -89,7 +89,7 @@ export FEISHU_CHAT_ID="oc_xxx"
 
 ```javascript
 const messageBridge = require("skill-message-bridge");   // 从 npm 安装时
-// 或 const messageBridge = require("./index.js");      // 在本仓库根目录时
+// 或 const messageBridge = require("./dist/index.js");  // 在本仓库根目录时（需先 npm run build）
 
 // 发送消息并等待回复
 const result = await messageBridge.notify({
@@ -202,14 +202,14 @@ npx skill-message-bridge "<AI 的回复内容>"
 
 **闭环**：循环执行「AI 生成回复 → 调用 `npx skill-message-bridge "<内容>"`（或 `npm run turn -- "<内容>"`）→ 解析 reply → 再生成 → 再调用」；仅用户说「结束」/「切回」时退出，不设轮数上限，永远 loop。
 
-**为何会自动断掉**：闭环在 Cursor 单次回复里跑，有工具调用/上下文上限，跑一段时间就会结束当次回复。**解决**：要不依赖 Cursor 的持久对话，可运行常驻进程 `node feishu-conversation.js`（配置 AI_REPLY_URL 或 OPENAI_API_KEY），在飞书里一直聊直到你说结束；若继续用 Cursor 闭环，断掉后说「继续飞书」即恢复。
+**为何会自动断掉**：闭环在 Cursor 单次回复里跑，有工具调用/上下文上限，跑一段时间就会结束当次回复。**解决**：要不依赖 Cursor 的持久对话，可运行常驻进程 `npm run conversation`（即 `node scripts/feishu-conversation.js`，需配置 AI_REPLY_URL 或 OPENAI_API_KEY），在飞书里一直聊直到你说结束；若继续用 Cursor 闭环，断掉后说「继续飞书」即恢复。
 
-## 可选：纯飞书端对话（feishu-conversation.js）
+## 可选：纯飞书端对话（scripts/feishu-conversation.js）
 
 不经过 Cursor、只在飞书里和机器人对话时，可单独运行：
 
 ```bash
-node feishu-conversation.js   # 或 npm run conversation
+npm run conversation   # 或 node scripts/feishu-conversation.js
 ```
 
 需配置 **AI_REPLY_URL** 或 **OPENAI_API_KEY**（+ OPENAI_BASE_URL、OPENAI_MODEL）。飞书需已订阅 `im.message.receive_v1`（长连接）。
@@ -227,7 +227,7 @@ npx skill-message-bridge send "测试"
 npx skill-message-bridge "请回复测试"   # 或 npx skill-message-bridge notify "..." --timeout=60
 ```
 
-在仓库内还可运行：`node test.js`（主测试）、`node test-quick.js`（快速 notify）、`node test-complete.js`（完整功能）、`node test-session-bridge.js`（Session Bridge）。
+在仓库内还可运行：`npm test`（主测试）、`npm run test:quick`（快速 notify）、`npm run test:complete`（完整功能）、`npm run test:session-bridge`（Session Bridge）。
 
 ## 更多参考
 

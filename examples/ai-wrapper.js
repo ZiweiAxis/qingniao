@@ -4,7 +4,8 @@
  * 用于约束 AI 工具的行为，确保敏感操作必须经过用户确认
  */
 
-const messageBridge = require("./index.js");
+const path = require("path");
+const messageBridge = require(path.join(__dirname, "..", "dist", "index.js"));
 
 /**
  * 执行需要用户确认的任务

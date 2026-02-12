@@ -1,5 +1,6 @@
 // Session Bridge 快速测试
-const { getSessionBridge } = require('./session-bridge.js');
+const path = require("path");
+const { getSessionBridge } = require(path.join(__dirname, "..", "scripts", "session-bridge.js"));
 
 async function test() {
   console.log('🧪 Session Bridge 测试\n');

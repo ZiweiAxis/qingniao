@@ -49,10 +49,10 @@ Cursor 从项目的 `.cursor/skills/<name>/` 或用户级 skills 目录加载 sk
 
 ```bash
 git clone https://github.com/hulk-yin/message-bridge.git .cursor/skills/message-bridge
-cd .cursor/skills/message-bridge && npm install && npm run build:dist
+cd .cursor/skills/message-bridge && npm install && npm run build
 ```
 
-之后 Cursor 会识别 `.cursor/skills/message-bridge/SKILL.md`，实现代码即同目录下的 `index.js`、`dist/feishu-turn.js` 等；AI 执行 `npm run turn` 时在 **`.cursor/skills/message-bridge`** 下执行即可。
+之后 Cursor 会识别 `.cursor/skills/message-bridge/SKILL.md`，实现代码即同目录下的 `dist/index.js`、`dist/cli.js`（由 `src/*.ts` 编译）；AI 执行 `npm run turn` 时在 **`.cursor/skills/message-bridge`** 下执行即可（需先 `npm run build`）。
 
 ### 方式二：用户级安装（所有项目可用）
 
@@ -61,7 +61,7 @@ cd .cursor/skills/message-bridge && npm install && npm run build:dist
 ```bash
 mkdir -p ~/.cursor/skills
 git clone https://github.com/hulk-yin/message-bridge.git ~/.cursor/skills/message-bridge
-cd ~/.cursor/skills/message-bridge && npm install && npm run build:dist
+cd ~/.cursor/skills/message-bridge && npm install && npm run build
 ```
 
 安装后**重启 Cursor** 或重新加载技能，配置好 `FEISHU_APP_ID` / `FEISHU_APP_SECRET` / `FEISHU_CHAT_ID` 即可使用。
@@ -77,13 +77,13 @@ Codex 使用 `$CODEX_HOME/skills`（默认 `~/.codex/skills`），通过 **skill
 scripts/install-skill-from-github.py --repo hulk-yin/message-bridge --path .
 ```
 
-将安装到 `$CODEX_HOME/skills/message-bridge`，目录内包含 `SKILL.md` 与完整实现。安装后**重启 Codex** 以加载新 skill。需在 skill 目录执行 `npm install` 与 `npm run build:dist` 后，`npm run turn` 等命令才可用。
+将安装到 `$CODEX_HOME/skills/message-bridge`，目录内包含 `SKILL.md` 与完整实现。安装后**重启 Codex** 以加载新 skill。需在 skill 目录执行 `npm install` 与 `npm run build` 后，`npm run turn` 等命令才可用。
 
 若无法使用上述脚本，可手动克隆：
 
 ```bash
 git clone https://github.com/hulk-yin/message-bridge.git "${CODEX_HOME:-$HOME/.codex}/skills/message-bridge"
-cd "${CODEX_HOME:-$HOME/.codex}/skills/message-bridge" && npm install && npm run build:dist
+cd "${CODEX_HOME:-$HOME/.codex}/skills/message-bridge" && npm install && npm run build
 ```
 
 ---
@@ -95,13 +95,13 @@ cd "${CODEX_HOME:-$HOME/.codex}/skills/message-bridge" && npm install && npm run
 ```bash
 # 将 <SKILLS_ROOT> 替换为环境的 skill 根目录
 git clone https://github.com/hulk-yin/message-bridge.git <SKILLS_ROOT>/message-bridge
-cd <SKILLS_ROOT>/message-bridge && npm install && npm run build:dist
+cd <SKILLS_ROOT>/message-bridge && npm install && npm run build
 ```
 
 约定：
 
 - **Skill 根目录** = 本仓库根目录 = 包含 `SKILL.md` 与 `package.json` 的目录。
-- 所有文档中的 `npm run turn`、`node dist/feishu-turn.js` 等命令，均在 **该目录** 下执行。
+- 所有文档中的 `npm run turn`、`npm run check-env` 等命令，均在 **该目录** 下执行。
 - 环境变量 `FEISHU_APP_ID`、`FEISHU_APP_SECRET`、`FEISHU_CHAT_ID` 需在运行前配置（或使用 `DITING_FEISHU_*`）。
 
 ---
@@ -112,7 +112,7 @@ cd <SKILLS_ROOT>/message-bridge && npm install && npm run build:dist
 
 ```bash
 npm install
-npm run build:dist
+npm run build
 # 1. 检查环境变量（不请求飞书）
 npx skill-message-bridge check-env
 # 2. 配置 FEISHU_* 后做一次快速测试（会真实发飞书）

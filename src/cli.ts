@@ -1,50 +1,33 @@
 #!/usr/bin/env node
 /**
- * skill-message-bridge 统一 CLI（npx 优先）
- *
- * 用法：
- *   npx skill-message-bridge "消息"           # 发到飞书并等回复（默认 notify）
- *   npx skill-message-bridge notify "消息" [--timeout=60]
- *   npx skill-message-bridge send "消息"     # 只发不等
- *   npx skill-message-bridge check-env       # 检查飞书环境变量
- *   npx skill-message-bridge --help
- *
- * 消息可从参数或 stdin 读取：echo "内容" | npx skill-message-bridge send
+ * skill-message-bridge 统一 CLI
  */
 
-const path = require("path");
-const fs = require("fs");
-const os = require("os");
-
-// 发布后为 dist/cli.js，同目录 dist/index.js；开发时根目录 cli.js require 根目录 index.js
-const mb = require(path.join(__dirname, "index.js"));
+import * as path from "path";
+import * as fs from "fs";
+import * as os from "os";
+import * as mb from "./index";
 
 const FEISHU_TURN_TIMEOUT = parseInt(process.env.FEISHU_TURN_TIMEOUT || "3600", 10);
-
 const CONFIG_DIR = path.join(os.homedir(), ".message-bridge");
 const CONFIG_PATH = path.join(CONFIG_DIR, "config.json");
 
-function loadConfigFile() {
+function loadConfigFile(): { feishu?: { appId?: string; appSecret?: string; chatId?: string } } {
   try {
     const raw = fs.readFileSync(CONFIG_PATH, "utf8");
     return JSON.parse(raw);
-  } catch (e) {
+  } catch {
     return { feishu: {} };
   }
 }
 
-function saveConfigFile(obj) {
-  try {
-    fs.mkdirSync(CONFIG_DIR, { recursive: true });
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify(obj, null, 2), "utf8");
-  } catch (e) {
-    console.error("写入配置失败:", e.message);
-    process.exit(1);
-  }
+function saveConfigFile(obj: ReturnType<typeof loadConfigFile>): void {
+  fs.mkdirSync(CONFIG_DIR, { recursive: true });
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(obj, null, 2), "utf8");
 }
 
-function parseConfigSetArgs(argv) {
-  const out = {};
+function parseConfigSetArgs(argv: string[]): { appId?: string; appSecret?: string; chatId?: string } {
+  const out: { appId?: string; appSecret?: string; chatId?: string } = {};
   for (let i = 3; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--app-id" && argv[i + 1] != null) out.appId = argv[++i];
@@ -57,21 +40,20 @@ function parseConfigSetArgs(argv) {
   return out;
 }
 
-function readStdin() {
+function readStdin(): string {
   if (!process.stdin.isTTY) {
-    const fs = require("fs");
     return fs.readFileSync(0, "utf8").trim();
   }
   return "";
 }
 
-function getMessageFromArgv(argv, afterSubcommand) {
+function getMessageFromArgv(argv: string[], afterSubcommand: number): string {
   const arg = argv[afterSubcommand];
   if (arg !== undefined && arg !== "" && !arg.startsWith("--")) return arg;
   return readStdin();
 }
 
-function parseTimeout(argv) {
+function parseTimeout(argv: string[]): number {
   for (let i = 2; i < argv.length; i++) {
     if (argv[i] === "--timeout" && argv[i + 1] != null)
       return parseInt(argv[i + 1], 10) || 60;
@@ -81,19 +63,19 @@ function parseTimeout(argv) {
   return FEISHU_TURN_TIMEOUT;
 }
 
-function checkEnv() {
-  const cfg = mb.getConfig ? mb.getConfig() : {};
+function checkEnv(): void {
+  const cfg = mb.getConfig();
   const appId = process.env.FEISHU_APP_ID || process.env.DITING_FEISHU_APP_ID || cfg.appId;
   const appSecret = process.env.FEISHU_APP_SECRET || process.env.DITING_FEISHU_APP_SECRET || cfg.appSecret;
   const chatId = process.env.FEISHU_CHAT_ID || process.env.DITING_FEISHU_CHAT_ID || cfg.chatId;
-  const ok = (v) => v && String(v).trim().length > 0;
-  const mask = (v) => (v && v.length > 8 ? v.slice(0, 4) + "***" + v.slice(-2) : "(未设置)");
+  const ok = (v: string | undefined) => v && String(v).trim().length > 0;
+  const mask = (v: string) => (v && v.length > 8 ? v.slice(0, 4) + "***" + v.slice(-2) : "(未设置)");
   const fromFile = !process.env.FEISHU_APP_ID && !process.env.DITING_FEISHU_APP_ID && cfg.appId ? " (来自 ~/.message-bridge/config.json)" : "";
 
   console.log("飞书配置自检\n");
-  console.log("  App ID:", ok(appId) ? mask(appId) + " ✓" + fromFile : "未设置 ✗");
+  console.log("  App ID:", ok(appId) ? mask(appId!) + " ✓" + fromFile : "未设置 ✗");
   console.log("  App Secret:", ok(appSecret) ? "*** ✓" + fromFile : "未设置 ✗");
-  console.log("  Chat ID (群聊):", ok(chatId) ? mask(chatId) + " ✓" : "未设置 ✗");
+  console.log("  Chat ID (群聊):", ok(chatId) ? mask(chatId!) + " ✓" : "未设置 ✗");
 
   const allOk = ok(appId) && ok(appSecret) && ok(chatId);
   if (allOk) {
@@ -107,7 +89,7 @@ function checkEnv() {
   }
 }
 
-function help() {
+function help(): void {
   console.log(`
 skill-message-bridge — 飞书/钉钉/企微 消息桥梁（npx 优先，无需安装）
 
@@ -122,13 +104,13 @@ skill-message-bridge — 飞书/钉钉/企微 消息桥梁（npx 优先，无需
   npx skill-message-bridge connect           启动长连接，收到首条消息后输出 chat_id 并提示保存
   npx skill-message-bridge --help | -h       本帮助
 
-配置: 优先使用环境变量 FEISHU_* / DITING_FEISHU_*；否则使用 ~/.message-bridge/config.json（可用 config set 写入）
+配置: 优先使用环境变量 FEISHU_* / DITING_FEISHU_*；否则使用 ~/.message-bridge/config.json
 首次使用与 Channel 选择: 见 SKILL.md「首次使用引导」；飞书完整引导见 docs/ONBOARDING-FEISHU.md
 `);
   process.exit(0);
 }
 
-async function main() {
+async function main(): Promise<void> {
   const argv = process.argv.slice();
   const a0 = argv[2];
 
@@ -164,7 +146,7 @@ async function main() {
     if (sub === "show") {
       const data = loadConfigFile();
       const f = data.feishu || {};
-      const mask = (v) => (v && v.length > 0 ? (v.length > 8 ? v.slice(0, 4) + "***" + v.slice(-2) : v.slice(0, 2) + "***") : "(未设置)");
+      const mask = (v: string | undefined) => (v && v.length > 0 ? (v.length > 8 ? v.slice(0, 4) + "***" + v.slice(-2) : v.slice(0, 2) + "***") : "(未设置)");
       console.log("feishu:");
       console.log("  appId:", f.appId ? mask(f.appId) : "(未设置)");
       console.log("  appSecret:", f.appSecret ? "***" : "(未设置)");
@@ -185,13 +167,13 @@ async function main() {
       .then((chatId) => {
         console.log("\n已收到首条消息，群聊 chat_id:", chatId);
         console.log("请保存到配置: npx skill-message-bridge config set feishu --chat-id=" + chatId);
-        if (mb.close) mb.close();
+        mb.close();
         process.exit(0);
       })
-      .catch((err) => {
+      .catch((err: Error) => {
         console.error("连接或接收失败:", err.message);
         console.log("若无法收到消息，请先在飞书开放平台完成「事件订阅」→ 选择「长连接」→ 订阅 im.message.receive_v1。");
-        if (mb.close) mb.close();
+        mb.close();
         process.exit(1);
       });
     return;
@@ -208,10 +190,10 @@ async function main() {
       console.log(JSON.stringify(result));
       process.exit(0);
     } catch (err) {
-      console.error(err.message);
+      console.error((err as Error).message);
       process.exit(1);
     } finally {
-      if (mb.close) mb.close();
+      mb.close();
     }
     return;
   }
@@ -225,7 +207,7 @@ async function main() {
     }
     try {
       const result = await mb.notify({ message, timeout });
-      const out = {
+      const out: Record<string, string> = {
         status: result.status || "error",
         reply: result.reply || "",
         replyUser: result.replyUser || "",
@@ -234,15 +216,14 @@ async function main() {
       console.log(JSON.stringify(out));
       process.exit(result.status === "replied" ? 0 : 1);
     } catch (err) {
-      console.log(JSON.stringify({ status: "error", reply: "", error: err.message }));
+      console.log(JSON.stringify({ status: "error", reply: "", error: (err as Error).message }));
       process.exit(1);
     } finally {
-      if (mb.close) mb.close();
+      mb.close();
     }
     return;
   }
 
-  // 兼容：第一个参数直接是消息 → notify
   const message = getMessageFromArgv(argv, 2);
   if (!message) {
     console.log(JSON.stringify({ status: "error", reply: "", error: "empty message" }));
@@ -250,7 +231,7 @@ async function main() {
   }
   try {
     const result = await mb.notify({ message, timeout: FEISHU_TURN_TIMEOUT });
-    const out = {
+    const out: Record<string, string> = {
       status: result.status || "error",
       reply: result.reply || "",
       replyUser: result.replyUser || "",
@@ -259,10 +240,10 @@ async function main() {
     console.log(JSON.stringify(out));
     process.exit(result.status === "replied" ? 0 : 1);
   } catch (err) {
-    console.log(JSON.stringify({ status: "error", reply: "", error: err.message }));
+    console.log(JSON.stringify({ status: "error", reply: "", error: (err as Error).message }));
     process.exit(1);
   } finally {
-    if (mb.close) mb.close();
+    mb.close();
   }
 }
 

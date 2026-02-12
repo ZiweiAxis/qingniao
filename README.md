@@ -43,7 +43,7 @@ npx skill-message-bridge "消息"           # 发并等回复
 npx skill-message-bridge --help
 ```
 
-在仓库内开发时：`npm install` → `npm run build:dist` → `node test-quick.js`。
+在仓库内开发时：`npm install` → `npm run build` → `npm run test:quick`。
 
 ## 功能特性
 
@@ -56,7 +56,7 @@ npx skill-message-bridge --help
 ## 使用示例
 
 ```javascript
-const messageBridge = require("./index.js");
+const messageBridge = require("./dist/index.js");
 
 // 发送消息并等待回复
 const result = await messageBridge.notify({
@@ -80,19 +80,15 @@ await messageBridge.send({
 - [CONTRIBUTING.md](./CONTRIBUTING.md) - 贡献流程、新渠道接入、单测与 AI 友好说明（中英）
 - [SKILL.md](./SKILL.md) - 与 AI 技能/闭环使用相关的详细说明
 
-## 开发进度
-
-详细进度请查看 [PROGRESS.md](./PROGRESS.md)
-
 ## 测试与示例
 
-**正式测试**（需配置飞书凭证或 config 文件）：
-- `test.js` - 主测试（凭证 + 发送），`npm test`
-- `test-quick.js` - 快速 notify（发并等回复）
-- `test-complete.js` - 完整功能（notify + send）
-- `test-session-bridge.js` - Session Bridge（切到飞书/切回）
+**正式测试**（需配置飞书凭证或 config 文件，在项目根目录执行）：
+- `npm test` — 主测试（凭证 + 发送）
+- `npm run test:quick` — 快速 notify（发并等回复）
+- `npm run test:complete` — 完整功能（notify + send）
+- `npm run test:session-bridge` — Session Bridge（切到飞书/切回）
 
-**示例**（参考用）：`example-claude-code.js`、`example-ai-wrapper.js`、`example-async.js`、`example-polling.js`  
+**示例**（参考用）：`examples/example-claude-code.js`、`examples/example-ai-wrapper.js`  
 详见 [docs/TESTS-AND-SCRIPTS.md](./docs/TESTS-AND-SCRIPTS.md)。
 
 ## 技术栈
@@ -119,6 +115,6 @@ MIT
 ## English (short)
 
 - **What**: Send messages and wait for user replies over IM (Feishu implemented; other channels welcome).
-- **Quick start**: `npm install` → set `FEISHU_APP_ID` / `FEISHU_APP_SECRET` / `FEISHU_CHAT_ID` → `npm run build:dist` → `node test-quick.js`.
+- **Quick start**: `npm install` → set `FEISHU_APP_ID` / `FEISHU_APP_SECRET` / `FEISHU_CHAT_ID` → `npm run build` → `npm run test:quick`.
 - **API**: `notify({ message, timeout })` returns `{ status: "replied"|"timeout"|"error", reply, replyUser }`; `send({ message })` for fire-and-forget.
 - **Contributing**: See [CONTRIBUTING.md](./CONTRIBUTING.md) for new channels, tests, and AI-friendly checklists.

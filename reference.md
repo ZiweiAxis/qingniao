@@ -56,7 +56,7 @@ API 详细说明、发布流程、技术实现与限制。**推荐用法**：全
 
 ```bash
 cd skills/message-bridge
-npm run build:dist
+npm run build
 npm version patch   # 或 minor / major，按需
 npm publish --access public --otp=<六位验证码>
 ```

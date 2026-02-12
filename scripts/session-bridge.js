@@ -4,12 +4,12 @@
  * 实现 Claude Code ↔ 飞书/钉钉/微信 的无缝切换
  */
 
-const messageBridge = require("./index.js");
-const fs = require("fs").promises;
 const path = require("path");
+const messageBridge = require(path.join(__dirname, "..", "dist", "index.js"));
+const fs = require("fs").promises;
 
-// 会话状态存储
-const SESSION_DIR = path.join(__dirname, ".sessions");
+// 会话状态存储（项目根目录 .sessions）
+const SESSION_DIR = path.join(__dirname, "..", ".sessions");
 const ACTIVE_SESSION_FILE = path.join(SESSION_DIR, "active.json");
 
 /**

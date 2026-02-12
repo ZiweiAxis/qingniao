@@ -23,7 +23,7 @@ jobs:
         run: npm ci
 
       - name: Build dist
-        run: npm run build:dist
+        run: npm run build
 
       - name: Smoke test (load dist)
         run: node -e "const m = require('./dist/index.js'); if (!m.notify || !m.send) throw new Error('missing exports'); console.log('OK');"

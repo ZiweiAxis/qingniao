@@ -1,5 +1,6 @@
 // 快速测试 - 60秒超时
-const mb = require('./index.js');
+const path = require("path");
+const mb = require(path.join(__dirname, "..", "dist", "index.js"));
 
 async function test() {
   console.log('🧪 快速测试 - 60秒超时\n');
