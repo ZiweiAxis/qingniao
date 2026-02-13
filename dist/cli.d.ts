@@ -1,5 +1,5 @@
 #!/usr/bin/env node
 /**
- * skill-message-bridge 统一 CLI
+ * qingniao（@zwa/qingniao）统一 CLI
  */
 export {};

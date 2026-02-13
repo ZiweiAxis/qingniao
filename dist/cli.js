@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 "use strict";
 /**
- * skill-message-bridge 统一 CLI
+ * qingniao（@zwa/qingniao）统一 CLI
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -288,7 +288,7 @@ async function checkEnv() {
 }
 function help() {
     console.log(`
-skill-message-bridge（青鸟）— 飞书/钉钉/企微 消息桥梁（npx 优先，无需安装）
+qingniao（青鸟）— 飞书/钉钉/企微 消息桥梁（npx @zwa/qingniao，无需安装）
 
 用法:
   npx @zwa/qingniao <消息>              发到飞书并等待回复（默认 notify）

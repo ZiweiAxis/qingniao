@@ -37,7 +37,7 @@ try {
 
 let version = process.env.VERSION || pkg.version || 'unknown';
 const repoUrl = process.env.REPO_URL || pkg.repository?.url?.replace(/^git\+/, '').replace(/\.git$/, '') || 'https://github.com/ZiweiAxis/qingniao';
-const name = pkg.name || 'skill-message-bridge';
+const name = pkg.name || '@zwa/qingniao';
 const ver = String(version).replace(/^v/, '') || 'unknown';
 
 const defaultTemplate = '🚀 {name} v{version} 已发布到 npm。\n\nAI 消息桥梁：飞书/钉钉/企微 异步通知与确认。\n\n{repoUrl}';

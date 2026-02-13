@@ -66,12 +66,12 @@ npm publish --access public --otp=<六位验证码>
 ```bash
 mkdir -p /tmp/mb-test && cd /tmp/mb-test
 npm init -y
-npm install skill-message-bridge
-node -e "const m=require('skill-message-bridge'); console.log('send:', typeof m.send, 'notify:', typeof m.notify);"
-npx skill-message-bridge "测试"   # 需配置 FEISHU_* 环境变量
+npm install @zwa/qingniao
+node -e "const m=require('@zwa/qingniao'); console.log('send:', typeof m.send, 'notify:', typeof m.notify);"
+npx @zwa/qingniao "测试"   # 需配置 FEISHU_* 环境变量
 ```
 
-**在当前项目使用**：无需安装即可 `npx skill-message-bridge send "..."` / `npx skill-message-bridge check-env` 等。若需在代码中 `require`，再 `npm install skill-message-bridge`，然后 `const { send, notify } = require("skill-message-bridge");`。
+**在当前项目使用**：无需安装即可 `npx @zwa/qingniao send "..."` / `npx @zwa/qingniao check-env` 等。若需在代码中 `require`，再 `npm install @zwa/qingniao`，然后 `const { send, notify } = require("@zwa/qingniao");`。
 
 ---
 
