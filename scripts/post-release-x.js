@@ -14,16 +14,20 @@ const fs = require('fs');
 
 const required = ['X_API_KEY', 'X_API_SECRET', 'X_ACCESS_TOKEN', 'X_ACCESS_TOKEN_SECRET'];
 for (const k of required) {
-  if (!process.env[k]) {
+  if (!(process.env[k] || '').trim()) {
     console.error(`[post-release-x] 缺少环境变量 ${k}，跳过 X 推送`);
     process.exit(0);
   }
 }
 
-const apiKey = process.env.X_API_KEY;
-const apiSecret = process.env.X_API_SECRET;
-const accessToken = process.env.X_ACCESS_TOKEN;
-const accessTokenSecret = process.env.X_ACCESS_TOKEN_SECRET;
+const apiKey = (process.env.X_API_KEY || '').trim();
+const apiSecret = (process.env.X_API_SECRET || '').trim();
+const accessToken = (process.env.X_ACCESS_TOKEN || '').trim();
+const accessTokenSecret = (process.env.X_ACCESS_TOKEN_SECRET || '').trim();
+if (!apiKey || !apiSecret || !accessToken || !accessTokenSecret) {
+  console.error('[post-release-x] 缺少或为空的环境变量，跳过 X 推送');
+  process.exit(0);
+}
 
 const pkgPath = path.join(__dirname, '..', 'package.json');
 let pkg = {};

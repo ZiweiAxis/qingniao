@@ -93,6 +93,19 @@ npm: npm i {name}
 
 ---
 
-## 六、可选：关闭 X 推送
+## 六、401 Unauthorized 排查
 
-若不想在 release 时发推，可删除这四个 Secret，或保留 Secret 但在 workflow 中注释掉 `notify-x` 相关 job。
+若 Actions 里 Notify X 步骤报 `X API 401: Unauthorized`，按下面检查：
+
+1. **App 权限**：X Developer Portal → 你的 App → Settings → User authentication settings → 确保 App 权限为 **Read and write**（发推需要写权限）。
+2. **Access Token**：在 App 的 **Keys and tokens** 里重新生成 **Access Token and Secret**，勾选 Read and write，把新的 Access Token 与 Access Token Secret 更新到仓库 Secrets（`X_ACCESS_TOKEN`、`X_ACCESS_TOKEN_SECRET`）。
+3. **Secret 无多余字符**：在 GitHub 仓库 Settings → Secrets 里编辑四个 Secret，确认粘贴时没有多余空格或换行；脚本已对取值做 `trim()`，若仍 401 可删除后重新粘贴保存。
+4. **API Key / Secret**：确认 `X_API_KEY` 对应 Consumer Key、`X_API_SECRET` 对应 Consumer Secret（同一 App 的 Keys and tokens 页）。
+
+改完 Secret 后重新跑一次 Actions（Re-run failed jobs 或重新 push 一个 tag）即可。
+
+---
+
+## 七、可选：关闭 X 推送
+
+若不想在 release 时发推，可删除这四个 Secret，或保留 Secret 但在 workflow 中注释掉 Notify X 步骤。
