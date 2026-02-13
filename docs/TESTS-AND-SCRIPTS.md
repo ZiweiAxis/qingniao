@@ -10,8 +10,9 @@
 | `tests/test-quick.js` | 快速测试：调用 `notify()` 发一条并等回复（默认 60 秒超时） | `npm run test:quick` |
 | `tests/test-complete.js` | 完整功能：依次测试 notify 与 send | `npm run test:complete` |
 | `tests/test-session-bridge.js` | Session Bridge：模拟「切到飞书」与状态 | `npm run test:session-bridge` |
+| `tests/test-cursor-hooks.js` | Cursor hooks：ensureStopHook / unregisterStopHook（临时目录，无需飞书） | `npm run test:hooks` |
 
-以上均需有效飞书配置（环境变量或 config 文件）；无 chat_id 时主测试仅校验凭证。
+以上除 `test:hooks` 外均需有效飞书配置（环境变量或 config 文件）；无 chat_id 时主测试仅校验凭证。
 
 ## 已删除（临时/调试，不再保留）
 

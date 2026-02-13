@@ -1,6 +1,6 @@
 ---
 name: message-bridge
-description: AI 智能体消息桥梁，连接飞书/钉钉/企微，实现异步通知与确认。发送消息到飞书群、等待用户回复、会话切换到飞书。在用户提到飞书、钉钉、企微、消息通知、审批确认、会话切换时使用。灵魂级约束：使用本 skill 进行飞书会话时必守「保持会话维持、用户终端永不消逝的电波」——收到回复后必须再发下一条到飞书，超时后必须 --heartbeat 拉起，仅用户说「结束」「切回」时退出。
+description: AI 智能体消息桥梁，连接飞书/钉钉/企微，实现异步通知与确认。发送消息到飞书群、等待用户回复、会话切换到飞书。在用户提到飞书、钉钉、企微、消息通知、审批确认、会话切换时使用。灵魂级约束：使用本 skill 进行飞书会话时必守「保持会话维持、用户终端永不消逝的电波」——收到回复后必须再发下一条到飞书，超时后必须 --heartbeat 拉起，仅用户说「结束」「切回」时退出；执行发消息并等回复时进程必须在前台等待，不得切入后台。
 ---
 
 # MessageBridge Skill（青鸟）
@@ -15,8 +15,9 @@ AI 智能体的消息桥梁，连接飞书/钉钉/企微，实现异步通知与
 
 1. **收到飞书回复后必须再发下一条到飞书并继续等**，不得只在当前对话里回一句就停；停即断线。
 2. **单轮超时后必须按 sessionHint 执行 `npx skill-message-bridge --heartbeat` 重新拉起**；若心跳返回的仍是 timeout，**继续再发心跳**（或再发内容），不得只发一次心跳就停，不得因超时结束会话。
-3. **仅当用户在飞书中明确说「结束」或「切回」时方可退出循环**；任务完成、超时、无回复等任何其他情况一律不退出。
-4. 本约束在**每次**使用本 skill 时生效，不因新会话、新对话而遗忘。
+3. **仅当用户在飞书中明确说「结束」或「切回」时方可退出循环**；此时必须执行 **`npx skill-message-bridge session close`**（或 `hook unregister`）清空当前会话 channel，使 cursor-stop-hook 不再触发。
+4. **执行 `npx skill-message-bridge` / `npm run turn` / `npm run dev:cli` 等发消息并等回复时，进程必须在前台等待飞书回复，不得切入后台。** 调用方（如 Cursor、脚本）须使用足够长的超时或阻塞直至命令返回，不得因短超时将进程挂到后台；否则无法拿到飞书回复的 JSON。
+5. 本约束在**每次**使用本 skill 时生效，不因新会话、新对话而遗忘。
 
 ---
 
@@ -91,6 +92,8 @@ npx skill-message-bridge "<内容>" --timeout=3600   # 可选：单轮超时秒�
 | **首次配对（chat_id）** | 仅缺 Chat ID 时：用户在本机终端执行 `npx skill-message-bridge connect`，在飞书发一条消息后终端输出 chat_id，再执行 `config set feishu --chat-id=oc_xxx` 保存。**connect 仅用于此次配对**，AI 在「到飞书」时**不要**调用 connect，只循环调用 `npx skill-message-bridge "<内容>"`。 |
 | **仅发不等** | 内部对应 `send` 子命令；对外统一用「发内容并等回复」这一条即可，需要「只发不等」时可由调用方发完即忽略回复或设极短超时。 |
 | **心跳（--heartbeat）** | 仅等待飞书下一条消息，**不向飞书推送任何内容**；用于单轮超时后**把会话重新拉起**、继续等飞书。用法：`npx skill-message-bridge --heartbeat [--timeout=N]`。**心跳可连续调用**：若本次 `--heartbeat` 返回的仍是 `status:"timeout"`，必须**再次**执行 `--heartbeat`（或发一条新内容），不能只发一次心跳就停；循环直到收到 `replied` 或用户说「结束」「切回」。输出格式与 `"<内容>"` 一致，超时同样为 `status:"timeout"`。 |
+| **当前会话 channel** | 发消息到飞书时自动在项目根 `.cursor/message-bridge-channel.json` 写入当前 channel（如 `feishu`）。**cursor-stop-hook 仅当 channel 非空时**才向 Cursor 输出 followup_message 以续写；channel 为空则不触发。 |
+| **关闭会话（session close）** | 用户说「结束」「切回」后必须执行：`npx skill-message-bridge session close` 或 `npx skill-message-bridge hook unregister`，清空 channel 并移除 stop hook；此后 cursor-stop-hook 不再触发会话续写。 |
 | **帮助** | `npx skill-message-bridge --help`、`config show`、`config path` 等为调试/运维用，非会话闭环所需。 |
 
 完整飞书配置与权限步骤见 [飞书 Onboarding](./docs/ONBOARDING-FEISHU.md)。
@@ -236,6 +239,8 @@ npx skill-message-bridge "<内容>" --timeout=3600   # 可选
 - 超时：默认约 12 小时（或 `FEISHU_TURN_TIMEOUT`）；可用 `--timeout=N` 覆盖。**单轮超时后永不退出**：用 **心跳** `npx skill-message-bridge --heartbeat [--timeout=N]` 把会话重新拉起，挂起等飞书下一条（不推送任何内容）；或发「等待超时，如需继续请直接回复」后再发一条 `"<内容>"`。超时≠结束会话。
 
 **闭环**：循环「AI 生成回复 → `npx skill-message-bridge "<内容>"` → 解析 reply、sessionHint；若本轮超时 → 用 `npx skill-message-bridge --heartbeat [--timeout=N]` 重新拉起；**若心跳返回的仍是 timeout，继续再发心跳（或再发内容），不要只发一次心跳就停** → 直到收到 replied 再生成 → 再调用」。**仅当用户发出明确结束信号（如「结束」「切回」）时退出；任务结束、超时、无回复等任何其他场景一律不退出。**
+
+**结束会话时必做**：当飞书回复中含「结束」「切回」时，执行 **`npx skill-message-bridge session close`**（或 `hook unregister`），清空当前会话 channel 并移除 stop hook。此后 cursor-stop-hook 读取到 channel 为空，**不再向渠道触发续写**；下次用户说「到飞书」再发消息时会重新写入 channel。可选：向飞书发收尾 `npx skill-message-bridge send "会话已结束。要再聊请到 Cursor 说「切到飞书」。"` 或执行 `scripts/cursor-feishu-end.sh`。
 
 **为何会自动断掉**：闭环在 Cursor 单次回复里跑，有工具调用/上下文上限，跑一段时间就会结束当次回复。**解决**：要不依赖 Cursor 的持久对话，可运行常驻进程 `npm run conversation`（即 `node scripts/feishu-conversation.js`，需配置 AI_REPLY_URL 或 OPENAI_API_KEY），在飞书里一直聊直到你说结束；若继续用 Cursor 闭环，断掉后说「继续飞书」即恢复。
 

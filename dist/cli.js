@@ -43,6 +43,7 @@ const os = __importStar(require("os"));
 const readline = __importStar(require("readline"));
 const child_process_1 = require("child_process");
 const mb = __importStar(require("./index"));
+const cursor_hooks_1 = require("./cursor-hooks");
 const REPO_URL = "https://github.com/hulk-yin/message-bridge.git";
 function prompt(question, opts) {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -105,6 +106,48 @@ function saveConfigFile(obj) {
     fs.mkdirSync(CONFIG_DIR, { recursive: true });
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(obj, null, 2), "utf8");
 }
+/** 从某目录向上查找包含 .cursor 的目录（项目根）。 */
+function findCursorRoot(startDir) {
+    let dir = path.resolve(startDir);
+    while (dir && dir !== path.dirname(dir)) {
+        if (fs.existsSync(path.join(dir, ".cursor")))
+            return dir;
+        dir = path.dirname(dir);
+    }
+    return null;
+}
+/** 从 argv 解析 --dir= 或 --dir 作为项目根，否则从 cwd 查找。 */
+function getCursorRoot(argv) {
+    for (let i = 2; i < argv.length; i++) {
+        if (argv[i] === "--dir" && argv[i + 1] != null)
+            return path.resolve(argv[i + 1]);
+        if (argv[i].startsWith("--dir="))
+            return path.resolve(argv[i].replace(/^--dir=/, ""));
+    }
+    return findCursorRoot(process.cwd());
+}
+const CHANNEL_FILE = "message-bridge-channel.json";
+/** 当前会话 channel 文件路径（项目根下 .cursor/message-bridge-channel.json）。channel 为空表示会话已关闭，cursor-stop-hook 不触发。 */
+function getChannelFilePath(root) {
+    return path.join(root, ".cursor", CHANNEL_FILE);
+}
+/** 读取当前会话 channel，无文件或 channel 为空则返回 ""。 */
+function readCurrentChannel(root) {
+    try {
+        const raw = fs.readFileSync(getChannelFilePath(root), "utf8");
+        const data = JSON.parse(raw);
+        return typeof data.channel === "string" ? data.channel.trim() : "";
+    }
+    catch {
+        return "";
+    }
+}
+/** 写入当前会话 channel；channel 为空表示关闭会话。 */
+function setChannel(root, channel) {
+    const filePath = getChannelFilePath(root);
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, JSON.stringify({ channel: channel || "" }, null, 2), "utf8");
+}
 function parseConfigSetArgs(argv) {
     const out = {};
     for (let i = 3; i < argv.length; i++) {
@@ -126,14 +169,42 @@ function parseConfigSetArgs(argv) {
 }
 function readStdin() {
     if (!process.stdin.isTTY) {
-        return fs.readFileSync(0, "utf8").trim();
+        try {
+            return fs.readFileSync(0, "utf8").trim();
+        }
+        catch {
+            return "";
+        }
     }
     return "";
 }
+const KNOWN_OPTIONS = new Set([
+    "--timeout",
+    "--dir",
+    "--help",
+    "-h",
+]);
+const KNOWN_OPTION_PREFIXES = ["--timeout=", "--dir="];
 function getMessageFromArgv(argv, afterSubcommand) {
-    const arg = argv[afterSubcommand];
-    if (arg !== undefined && arg !== "" && !arg.startsWith("--"))
-        return arg;
+    for (let i = afterSubcommand; i < argv.length; i++) {
+        const arg = argv[i];
+        if (arg === "--") {
+            i++;
+            if (i < argv.length)
+                return argv[i];
+            break;
+        }
+        if (arg !== undefined && arg !== "") {
+            if (KNOWN_OPTIONS.has(arg)) {
+                if ((arg === "--timeout" || arg === "--dir") && argv[i + 1] != null)
+                    i++;
+                continue;
+            }
+            if (KNOWN_OPTION_PREFIXES.some((p) => arg.startsWith(p)))
+                continue;
+            return arg;
+        }
+    }
     return readStdin();
 }
 function parseTimeout(argv) {
@@ -230,6 +301,8 @@ skill-message-bridge（青鸟）— 飞书/钉钉/企微 消息桥梁（npx 优�
   npx skill-message-bridge config show        查看当前配置（脱敏）
   npx skill-message-bridge config path       显示配置文件路径
   npx skill-message-bridge connect           启动长连接，收到首条消息（群聊或私聊）后输出 chat_id 并提示保存
+  npx skill-message-bridge hook unregister  [--dir=项目根]  清除 stop hook 并关闭当前会话 channel
+  npx skill-message-bridge session close    [--dir=项目根]  关闭会话（清空 channel、移除 stop hook）
   npx skill-message-bridge --help | -h       本帮助
 
 配置: 优先使用环境变量 FEISHU_* / DITING_FEISHU_*；否则使用 ~/.message-bridge/config.json
@@ -247,6 +320,51 @@ async function main() {
     if (a0 === "check-env") {
         await checkEnv();
         return;
+    }
+    if (a0 === "hook") {
+        const sub = argv[3];
+        const root = getCursorRoot(argv);
+        if (sub === "unregister") {
+            if (root) {
+                (0, cursor_hooks_1.unregisterStopHook)(root);
+                setChannel(root, "");
+                process.stderr.write("[MessageBridge] 已清除 stop hook 与当前会话 channel。\n");
+            }
+            else {
+                process.stderr.write("[MessageBridge] 未找到项目根（无 .cursor），未做修改。\n");
+            }
+            process.exit(0);
+        }
+        process.stderr.write("用法: hook unregister [--dir=项目根]\n");
+        process.exit(1);
+    }
+    if (a0 === "session") {
+        const sub = argv[3];
+        const root = getCursorRoot(argv);
+        if (sub === "close") {
+            if (root) {
+                setChannel(root, "");
+                (0, cursor_hooks_1.unregisterStopHook)(root);
+                process.stderr.write("[MessageBridge] 已关闭会话（channel 已清空，stop hook 已移除）。\n");
+            }
+            else {
+                process.stderr.write("[MessageBridge] 未找到项目根，未做修改。\n");
+            }
+            process.exit(0);
+        }
+        process.stderr.write("用法: session close [--dir=项目根]\n");
+        process.exit(1);
+    }
+    if (a0 === "cursor-stop-hook") {
+        const root = findCursorRoot(process.cwd());
+        const channel = root ? readCurrentChannel(root) : "";
+        if (!channel) {
+            process.stdout.write(JSON.stringify({}) + "\n");
+        }
+        else {
+            process.stdout.write(JSON.stringify({ followup_message: "回顾上一条直接回答的内容，发送给青鸟。" }) + "\n");
+        }
+        process.exit(0);
     }
     if (a0 === "config") {
         const sub = argv[3];
@@ -564,6 +682,11 @@ async function main() {
     if (!message) {
         console.log(JSON.stringify({ status: "error", reply: "", error: "empty message" }));
         process.exit(1);
+    }
+    const cursorRoot = getCursorRoot(argv);
+    if (cursorRoot) {
+        (0, cursor_hooks_1.ensureStopHook)(cursorRoot);
+        setChannel(cursorRoot, "feishu");
     }
     try {
         const result = await mb.notify({ message, timeout: FEISHU_TURN_TIMEOUT });
