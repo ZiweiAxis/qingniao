@@ -40,7 +40,7 @@ exports.ensureStopHook = ensureStopHook;
 exports.unregisterStopHook = unregisterStopHook;
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
-const STOP_HOOK_CMD = "npx skill-message-bridge cursor-stop-hook";
+const STOP_HOOK_CMD = "npx @zwa/qingniao cursor-stop-hook";
 /** 若项目根下 .cursor/hooks.json 没有本 skill 的 stop hook，则写入；已有则不动。 */
 function ensureStopHook(root) {
     const hooksPath = path.join(root, ".cursor", "hooks.json");
@@ -55,7 +55,7 @@ function ensureStopHook(root) {
         obj.hooks = {};
     if (!Array.isArray(obj.hooks.stop))
         obj.hooks.stop = [];
-    const hasOurs = obj.hooks.stop.some((e) => e.command && (e.command.includes("cursor-stop-hook") || e.command.includes("skill-message-bridge")));
+    const hasOurs = obj.hooks.stop.some((e) => e.command && (e.command.includes("cursor-stop-hook") || e.command.includes("skill-message-bridge") || e.command.includes("qingniao") || e.command.includes("@zwa/qingniao")));
     if (!hasOurs) {
         obj.hooks.stop.push({ command: STOP_HOOK_CMD, timeout: 15, loop_limit: 5 });
         fs.mkdirSync(path.dirname(hooksPath), { recursive: true });
@@ -69,7 +69,7 @@ function unregisterStopHook(root) {
         const obj = JSON.parse(fs.readFileSync(hooksPath, "utf8"));
         if (!obj.hooks || !Array.isArray(obj.hooks.stop))
             return;
-        obj.hooks.stop = obj.hooks.stop.filter((e) => !e.command || (!e.command.includes("cursor-stop-hook") && !e.command.includes("skill-message-bridge")));
+        obj.hooks.stop = obj.hooks.stop.filter((e) => !e.command || (!e.command.includes("cursor-stop-hook") && !e.command.includes("skill-message-bridge") && !e.command.includes("qingniao") && !e.command.includes("@zwa/qingniao")));
         fs.writeFileSync(hooksPath, JSON.stringify(obj, null, 2), "utf8");
     }
     catch {

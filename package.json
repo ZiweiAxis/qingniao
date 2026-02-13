@@ -1,6 +1,6 @@
 {
-    "name": "skill-message-bridge",
-    "version": "0.2.3",
+    "name": "@zwa/qingniao",
+    "version": "0.0.1",
     "description": "AI 智能体的消息桥梁，连接飞书/钉钉/企微，实现异步通知与确认",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -19,8 +19,8 @@
         "prepublishOnly": "npm run build"
     },
     "bin": {
-        "skill-message-bridge": "dist/cli.js",
-        "message-bridge-turn": "dist/cli.js"
+        "qingniao": "dist/cli.js",
+        "skill-message-bridge": "dist/cli.js"
     },
     "files": [
         "dist",

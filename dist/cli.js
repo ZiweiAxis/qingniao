@@ -85,7 +85,7 @@ const FEISHU_PAIRING_SUCCESS_GUIDE = "配对成功！已自动保存本会话，
 /** 每轮返回给调用方的会话提示，避免 Cursor 等忘记 in-loop 约束自动退出。不做内容匹配，是否结束由调用方根据语义判断。 */
 const SESSION_HINT_CONTINUE = "用户未说「结束」或「切回」前请继续循环发消息，勿退出飞书会话。";
 /** 超时时的明确指令：让调用方执行 --heartbeat 重新拉起；若心跳再超时则继续发心跳，不要只发一次就停。 */
-const SESSION_HINT_TIMEOUT = "本轮超时，请执行 npx skill-message-bridge --heartbeat [--timeout=N] 重新拉起会话；若返回仍为 timeout，继续再发 --heartbeat，勿只发一次就停，勿退出。";
+const SESSION_HINT_TIMEOUT = "本轮超时，请执行 npx @zwa/qingniao --heartbeat [--timeout=N] 重新拉起会话；若返回仍为 timeout，继续再发 --heartbeat，勿只发一次就停，勿退出。";
 function sessionHint(status, _reply) {
     return status === "timeout" ? SESSION_HINT_TIMEOUT : SESSION_HINT_CONTINUE;
 }
@@ -271,16 +271,16 @@ async function checkEnv() {
     }
     const allOk = ok(appId) && ok(appSecret) && ok(chatId);
     if (allOk) {
-        console.log("\n✅ 配置完整。可运行: npx skill-message-bridge send \"测试\"");
+        console.log("\n✅ 配置完整。可运行: npx @zwa/qingniao send \"测试\"");
         process.exit(0);
     }
     else {
         console.log("\n❌ 请补全上述缺失项。");
         if (!ok(appId) || !ok(appSecret)) {
-            console.log("  使用 npx 配置: npx skill-message-bridge config set feishu --app-id=xxx --app-secret=xxx");
+            console.log("  使用 npx 配置: npx @zwa/qingniao config set feishu --app-id=xxx --app-secret=xxx");
         }
         else {
-            console.log("  获取 Chat ID: npx skill-message-bridge connect，在群聊或私聊中向机器人发一条消息后按提示保存。");
+            console.log("  获取 Chat ID: npx @zwa/qingniao connect，在群聊或私聊中向机器人发一条消息后按提示保存。");
         }
         console.log("  完整步骤见 docs/ONBOARDING-FEISHU.md");
         process.exit(1);
@@ -291,19 +291,19 @@ function help() {
 skill-message-bridge（青鸟）— 飞书/钉钉/企微 消息桥梁（npx 优先，无需安装）
 
 用法:
-  npx skill-message-bridge <消息>              发到飞书并等待回复（默认 notify）
-  npx skill-message-bridge notify <消息> [--timeout=N]  同上，可指定超时秒数
-  npx skill-message-bridge --heartbeat [--timeout=N]  仅等待下一条消息，不向飞书推送（心跳）
-  npx skill-message-bridge install [--target=cursor|codex|claude-code|vscode] [--global] [--dir=/path]  将本 skill 安装到目标工具（已知 target 按规则存放；未知用 --dir 指定 skills 根目录）
-  npx skill-message-bridge send <消息>        只发送，不等待回复
-  npx skill-message-bridge check-env          检查配置（环境变量或 ~/.message-bridge/config.json）
-  npx skill-message-bridge config set feishu [--app-id=xxx] [--app-secret=xxx] [--chat-id=xxx]  写入配置（缺省项可交互输入）
-  npx skill-message-bridge config show        查看当前配置（脱敏）
-  npx skill-message-bridge config path       显示配置文件路径
-  npx skill-message-bridge connect           启动长连接，收到首条消息（群聊或私聊）后输出 chat_id 并提示保存
-  npx skill-message-bridge hook unregister  [--dir=项目根]  清除 stop hook 并关闭当前会话 channel
-  npx skill-message-bridge session close    [--dir=项目根]  关闭会话（清空 channel、移除 stop hook）
-  npx skill-message-bridge --help | -h       本帮助
+  npx @zwa/qingniao <消息>              发到飞书并等待回复（默认 notify）
+  npx @zwa/qingniao notify <消息> [--timeout=N]  同上，可指定超时秒数
+  npx @zwa/qingniao --heartbeat [--timeout=N]  仅等待下一条消息，不向飞书推送（心跳）
+  npx @zwa/qingniao install [--target=cursor|codex|claude-code|vscode] [--global] [--dir=/path]  将本 skill 安装到目标工具（已知 target 按规则存放；未知用 --dir 指定 skills 根目录）
+  npx @zwa/qingniao send <消息>        只发送，不等待回复
+  npx @zwa/qingniao check-env          检查配置（环境变量或 ~/.message-bridge/config.json）
+  npx @zwa/qingniao config set feishu [--app-id=xxx] [--app-secret=xxx] [--chat-id=xxx]  写入配置（缺省项可交互输入）
+  npx @zwa/qingniao config show        查看当前配置（脱敏）
+  npx @zwa/qingniao config path       显示配置文件路径
+  npx @zwa/qingniao connect           启动长连接，收到首条消息（群聊或私聊）后输出 chat_id 并提示保存
+  npx @zwa/qingniao hook unregister  [--dir=项目根]  清除 stop hook 并关闭当前会话 channel
+  npx @zwa/qingniao session close    [--dir=项目根]  关闭会话（清空 channel、移除 stop hook）
+  npx @zwa/qingniao --help | -h       本帮助
 
 配置: 优先使用环境变量 FEISHU_* / DITING_FEISHU_*；否则使用 ~/.message-bridge/config.json
 首次使用与 Channel 选择: 见 SKILL.md「首次使用引导」；飞书完整引导见 docs/ONBOARDING-FEISHU.md
@@ -380,7 +380,7 @@ async function main() {
                 console.error("未检测到交互终端，未传入任何参数。");
                 console.error("要看到「请输入 App ID」等交互式引导，请在本机终端中亲自执行（不要通过助手代跑）：");
                 console.error("  cd " + path.dirname(__dirname) + " && npm run dev:cli -- config set feishu");
-                console.error("或直接传参：npx skill-message-bridge config set feishu --app-id=xxx --app-secret=xxx [--chat-id=xxx]");
+                console.error("或直接传参：npx @zwa/qingniao config set feishu --app-id=xxx --app-secret=xxx [--chat-id=xxx]");
                 process.exit(1);
             }
             const data = loadConfigFile();
@@ -438,7 +438,7 @@ async function main() {
             saveConfigFile(data);
             console.log("已写入 " + CONFIG_PATH);
             if (opts.chatId && opts.chatId !== "") {
-                console.log("chat_id 已保存，可运行 npx skill-message-bridge send \"测试\" 验证。");
+                console.log("chat_id 已保存，可运行 npx @zwa/qingniao send \"测试\" 验证。");
                 process.exit(0);
             }
             if (process.stdin.isTTY) {
@@ -457,7 +457,7 @@ async function main() {
                     cfg.feishu.chatId = chatId;
                     saveConfigFile(cfg);
                     console.log("\n已收到首条消息，会话 chat_id（群聊/私聊均可）:", chatId);
-                    console.log("已自动保存到 " + CONFIG_PATH + "，可运行 npx skill-message-bridge send \"测试\" 验证。");
+                    console.log("已自动保存到 " + CONFIG_PATH + "，可运行 npx @zwa/qingniao send \"测试\" 验证。");
                     mb.close();
                     process.exit(0);
                 })
@@ -470,7 +470,7 @@ async function main() {
                 return;
             }
             // 非交互环境下，仅提醒后退出
-            console.log("尚未配置 Chat ID。可稍后运行: npx skill-message-bridge connect，在群聊或私聊中向机器人发送任意一条消息后按提示保存。");
+            console.log("尚未配置 Chat ID。可稍后运行: npx @zwa/qingniao connect，在群聊或私聊中向机器人发送任意一条消息后按提示保存。");
             process.exit(0);
         }
         if (sub === "show") {
@@ -587,7 +587,7 @@ async function main() {
             cfg.feishu.chatId = chatId;
             saveConfigFile(cfg);
             console.log("\n已收到首条消息，会话 chat_id（群聊/私聊均可）:", chatId);
-            console.log("已自动保存到 " + CONFIG_PATH + "，可运行 npx skill-message-bridge send \"测试\" 验证。");
+            console.log("已自动保存到 " + CONFIG_PATH + "，可运行 npx @zwa/qingniao send \"测试\" 验证。");
             mb.close();
             process.exit(0);
         })
@@ -602,7 +602,7 @@ async function main() {
     if (a0 === "send") {
         const message = getMessageFromArgv(argv, 3);
         if (!message) {
-            console.error("错误: 请提供消息，例如 npx skill-message-bridge send \"内容\"");
+            console.error("错误: 请提供消息，例如 npx @zwa/qingniao send \"内容\"");
             process.exit(1);
         }
         try {
@@ -623,7 +623,7 @@ async function main() {
         const timeout = parseTimeout(argv);
         const message = getMessageFromArgv(argv, 3);
         if (!message) {
-            console.error("错误: 请提供消息，例如 npx skill-message-bridge notify \"内容\" [--timeout=60]");
+            console.error("错误: 请提供消息，例如 npx @zwa/qingniao notify \"内容\" [--timeout=60]");
             process.exit(1);
         }
         try {
