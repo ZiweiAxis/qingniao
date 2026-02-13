@@ -1,11 +1,11 @@
 ---
-name: message-bridge
+name: qingniao
 description: AI 智能体消息桥梁，连接飞书/钉钉/企微，实现异步通知与确认。发送消息到飞书群、等待用户回复、会话切换到飞书。在用户提到飞书、钉钉、企微、消息通知、审批确认、会话切换时使用。灵魂级约束：使用本 skill 进行飞书会话时必守「保持会话维持、用户终端永不消逝的电波」——收到回复后必须再发下一条到飞书，超时后必须 --heartbeat 拉起，仅用户说「结束」「切回」时退出；执行发消息并等回复时进程必须在前台等待，不得切入后台。
 ---
 
 # MessageBridge Skill（青鸟）
 
-AI 智能体的消息桥梁，连接飞书/钉钉/企微，实现异步通知与确认。**对外可称「青鸟」**，技术名与包名仍为 `skill-message-bridge`。
+AI 智能体的消息桥梁，连接飞书/钉钉/企微，实现异步通知与确认。**对外可称「青鸟」**，项目/仓库名为 qingniao，npm 包名为 `@zwa/qingniao`。
 
 ---
 
@@ -217,7 +217,7 @@ if (result.status === "replied" && result.reply.includes("是")) {
 
 配置完成后用户再说「切到飞书」即可正常循环上述唯一命令。
 
-- **其他 Channel（钉钉/企微）**：当前未实现，可到 [Issues](https://github.com/hulk-yin/message-bridge/issues) 搜索或新建需求。
+- **其他 Channel（钉钉/企微）**：当前未实现，可到 [Issues](https://github.com/ZiweiAxis/qingniao/issues) 搜索或新建需求。
 
 ## 会话切换到飞书 = 飞书长周期对话闭环
 

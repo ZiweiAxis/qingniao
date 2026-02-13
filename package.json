@@ -1,6 +1,6 @@
 {
     "name": "@zwa/qingniao",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "AI 智能体的消息桥梁，连接飞书/钉钉/企微，实现异步通知与确认",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -47,9 +47,9 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/hulk-yin/message-bridge.git"
+        "url": "git+https://github.com/ZiweiAxis/qingniao.git"
     },
-    "homepage": "https://github.com/hulk-yin/message-bridge#readme",
+    "homepage": "https://github.com/ZiweiAxis/qingniao#readme",
     "dependencies": {
         "@inquirer/select": "^5.0.4",
         "@larksuiteoapi/lark-mcp": "^0.5.0",

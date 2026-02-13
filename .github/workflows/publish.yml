@@ -40,3 +40,14 @@ jobs:
           else
             npm publish --provenance --access public
           fi
+
+      # 发布成功后向 X (Twitter) 发一条 release 推文（需在仓库 Secrets 中配置 X_API_KEY 等，见 docs/X-RELEASE.md）
+      - name: Notify X
+        env:
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_SECRET: ${{ secrets.X_API_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+          VERSION: ${{ github.ref_name }}
+        run: node scripts/post-release-x.js
+        continue-on-error: true

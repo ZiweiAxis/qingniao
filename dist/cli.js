@@ -44,7 +44,7 @@ const readline = __importStar(require("readline"));
 const child_process_1 = require("child_process");
 const mb = __importStar(require("./index"));
 const cursor_hooks_1 = require("./cursor-hooks");
-const REPO_URL = "https://github.com/hulk-yin/message-bridge.git";
+const REPO_URL = "https://github.com/ZiweiAxis/qingniao.git";
 function prompt(question, opts) {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     return new Promise((resolve) => {
@@ -371,7 +371,7 @@ async function main() {
         if (sub === "set") {
             const channel = argv[4];
             if (channel !== "feishu") {
-                console.error("当前仅支持 feishu。其他 channel 请到 GitHub 提 issue：https://github.com/hulk-yin/message-bridge/issues");
+                console.error("当前仅支持 feishu。其他 channel 请到 GitHub 提 issue：https://github.com/ZiweiAxis/qingniao/issues");
                 process.exit(1);
             }
             let opts = parseConfigSetArgs(argv);
@@ -517,22 +517,22 @@ async function main() {
             process.exit(0);
         };
         if (dir) {
-            doInstall(path.resolve(dir, "message-bridge"));
+            doInstall(path.resolve(dir, "qingniao"));
             return;
         }
         if (targetOpt) {
             const target = targetOpt.toLowerCase();
             if (target === "cursor") {
                 doInstall(globalFlag
-                    ? path.join(os.homedir(), ".cursor", "skills", "message-bridge")
-                    : path.join(process.cwd(), ".cursor", "skills", "message-bridge"));
+                    ? path.join(os.homedir(), ".cursor", "skills", "qingniao")
+                    : path.join(process.cwd(), ".cursor", "skills", "qingniao"));
             }
             else if (target === "codex") {
                 const codexHome = process.env.CODEX_HOME || path.join(os.homedir(), ".codex");
-                doInstall(path.join(codexHome, "skills", "message-bridge"));
+                doInstall(path.join(codexHome, "skills", "qingniao"));
             }
             else if (target === "claude-code" || target === "vscode") {
-                doInstall(path.join(os.homedir(), ".claude", "skills", "message-bridge"));
+                doInstall(path.join(os.homedir(), ".claude", "skills", "qingniao"));
             }
             else {
                 console.error("未知 target，请用 1–5 选择或 --dir=/path");
@@ -553,18 +553,18 @@ async function main() {
                 ],
             });
             if (choice === "cursor-project")
-                return path.join(process.cwd(), ".cursor", "skills", "message-bridge");
+                return path.join(process.cwd(), ".cursor", "skills", "qingniao");
             if (choice === "cursor-global")
-                return path.join(os.homedir(), ".cursor", "skills", "message-bridge");
+                return path.join(os.homedir(), ".cursor", "skills", "qingniao");
             if (choice === "codex")
-                return path.join(process.env.CODEX_HOME || path.join(os.homedir(), ".codex"), "skills", "message-bridge");
+                return path.join(process.env.CODEX_HOME || path.join(os.homedir(), ".codex"), "skills", "qingniao");
             if (choice === "claude-vscode")
-                return path.join(os.homedir(), ".claude", "skills", "message-bridge");
+                return path.join(os.homedir(), ".claude", "skills", "qingniao");
             const rl2 = readline.createInterface({ input: process.stdin, output: process.stdout });
             const pathAnswer = await new Promise((res) => rl2.question("请输入 skills 根目录路径: ", (a) => { rl2.close(); res((a || "").trim()); }));
             if (!pathAnswer)
                 throw new Error("未输入路径，已取消");
-            return path.resolve(pathAnswer, "message-bridge");
+            return path.resolve(pathAnswer, "qingniao");
         };
         runInteractive()
             .then(doInstall)

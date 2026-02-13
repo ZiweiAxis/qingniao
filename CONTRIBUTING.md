@@ -99,7 +99,7 @@ We welcome contributions. The project supports multiple channels (Feishu impleme
    git init
    git add .
    git commit -m "Initial commit"
-   gh repo create message-bridge --public --source=. --push
+   gh repo create qingniao --public --source=. --push
    ```
 4. 若仓库已存在，则：`git remote add origin <your-repo-url>` 后 `git push -u origin main`。
 

@@ -119,18 +119,31 @@ async function init() {
                 const content = JSON.parse(message.content);
                 const senderId = message.sender?.sender_id?.open_id || message.sender?.sender_id?.user_id || "unknown";
                 const text = content.text || "";
+                const createTime = message.create_time != null ? Number(message.create_time) : null;
+                const createTimeMs = createTime != null && !Number.isNaN(createTime)
+                    ? createTime > 1e12
+                        ? createTime
+                        : createTime * 1000
+                    : null;
                 process.stderr.write(`[MessageBridge] 收到消息: ${text} (from ${senderId})\n`);
                 for (const [, task] of pendingTasks.entries()) {
-                    if (task.status === "pending") {
-                        task.reply = text;
-                        task.replyUser = senderId;
-                        task.status = "resolved";
-                        task.repliedAt = new Date();
-                        if (task.resolve)
-                            task.resolve(task);
-                        process.stderr.write(`[MessageBridge] 任务 ${task.taskId} 已解决\n`);
-                        break;
+                    if (task.status !== "pending")
+                        continue;
+                    // 过滤重连/重放：每次 notify 是新进程、新 WS 连接，飞书可能对新连接重放最近事件，导致同一条用户回复被算两次；仅接受「本次发送之后」的消息（create_time >= sentAt - 2s）
+                    if (task.sentAtMs != null && createTimeMs != null) {
+                        if (createTimeMs < task.sentAtMs - 2000) {
+                            process.stderr.write(`[MessageBridge] 忽略发送前消息 (create_time ${createTimeMs} < sentAt ${task.sentAtMs})\n`);
+                            continue;
+                        }
                     }
+                    task.reply = text;
+                    task.replyUser = senderId;
+                    task.status = "resolved";
+                    task.repliedAt = new Date();
+                    if (task.resolve)
+                        task.resolve(task);
+                    process.stderr.write(`[MessageBridge] 任务 ${task.taskId} 已解决\n`);
+                    break;
                 }
                 const chatId = message.chat_id || (message.chat && message.chat.chat_id) || data.chat_id;
                 if (firstMessageResolver && chatId) {
@@ -192,6 +205,7 @@ async function notify(params) {
         if (res.code !== 0)
             throw new Error(`发送失败: ${res.msg}`);
         const mid = res.data?.message_id ?? "";
+        task.sentAtMs = Date.now();
         process.stderr.write(`[MessageBridge] 消息已发送: ${mid}\n`);
         const result = await new Promise((resolve, reject) => {
             task.resolve = resolve;

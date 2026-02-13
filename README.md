@@ -35,12 +35,12 @@ export FEISHU_APP_SECRET="your_app_secret"
 export FEISHU_CHAT_ID="oc_xxx"
 
 # 2. 自检
-npx skill-message-bridge check-env
+npx @zwa/qingniao check-env
 
 # 3. 使用
-npx skill-message-bridge send "测试"      # 只发
-npx skill-message-bridge "消息"           # 发并等回复
-npx skill-message-bridge --help
+npx @zwa/qingniao send "测试"      # 只发
+npx @zwa/qingniao "消息"           # 发并等回复
+npx @zwa/qingniao --help
 ```
 
 在仓库内开发时：`npm install` → `npm run build` → `npm run test:quick`。  
@@ -110,7 +110,7 @@ MIT
 
 ## 安装方式 / Install
 
-- **npm**：`npm install skill-message-bridge`（已上架 [npm](https://www.npmjs.com/package/skill-message-bridge)）。代码中 `require("skill-message-bridge")`，命令行 `npx skill-message-bridge "..."`。
+- **npm**：`npm install @zwa/qingniao`（已上架 [npm](https://www.npmjs.com/package/@zwa/qingniao)）。代码中 `require("@zwa/qingniao")`，命令行 `npx @zwa/qingniao "..."`。
 - **Skill（Cursor / Codex / Claude）**：见 **[INSTALL.md](./INSTALL.md)**，支持 Git 克隆到各环境 skill 目录或从 npm 安装后使用。
 
 ## English (short)
