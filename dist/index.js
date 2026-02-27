@@ -48,6 +48,8 @@ exports.close = close;
 exports.runConnectMode = runConnectMode;
 const lark = __importStar(require("@larksuiteoapi/node-sdk"));
 const loader_1 = require("./config/loader");
+const card_1 = require("./utils/card");
+const card_handler_1 = require("./utils/card-handler");
 // 使用新的配置加载器
 function getConfigValues() {
     const config = (0, loader_1.loadFeishuConfig)();
@@ -152,6 +154,8 @@ async function init() {
             return { code: 0 };
         },
     });
+    // 注册卡片交互处理器
+    (0, card_handler_1.registerCardActionHandler)(eventDispatcher);
     wsClient = new lark.WSClient({
         appId: config.appId,
         appSecret: config.appSecret,
@@ -228,19 +232,22 @@ async function notify(params) {
     }
 }
 async function send(params) {
-    const { message, platform = "feishu", userId, groupId } = params;
+    const { message, platform = "feishu", userId, groupId, useInteractiveCard = false } = params;
     await init();
     try {
         const config = getConfigValues();
         const targetId = groupId || config.chatId || userId || "";
         const receiveIdType = groupId || config.chatId ? "chat_id" : "open_id";
-        process.stderr.write(`[MessageBridge] 发送消息 (${receiveIdType}): ${message}\n`);
+        // 只在明确指定时才使用交互式卡片
+        const msgType = useInteractiveCard ? "interactive" : "text";
+        const content = useInteractiveCard ? (0, card_1.createInteractiveCard)(message) : (0, card_1.createTextMessage)(message);
+        process.stderr.write(`[MessageBridge] 发送消息 (${receiveIdType}, ${msgType}): ${message}\n`);
         const res = await httpClient.im.message.create({
             params: { receive_id_type: receiveIdType },
             data: {
                 receive_id: targetId,
-                msg_type: "text",
-                content: JSON.stringify({ text: message }),
+                msg_type: msgType,
+                content: content,
             },
         });
         if (res.code !== 0)

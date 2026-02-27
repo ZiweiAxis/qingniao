@@ -30,7 +30,7 @@ export const SESSION_HINT_CONTINUE = '用户未说「结束」或「切回」前
 export const SESSION_HINT_TIMEOUT = '本轮超时，请执行 npx @zwa/qingniao --heartbeat [--timeout=N] 重新拉起会话；若返回仍为 timeout，继续再发 --heartbeat，勿只发一次就停，勿退出。';
 
 // 配对成功引导
-export const FEISHU_PAIRING_SUCCESS_GUIDE = '配对成功！已自动保存本会话，下次在 Cursor/Codex 里你只要说「切换到飞书」「切到飞书」或「离开一会」，就可以把对话切到这里继续和青鸟对话；说「结束」或「切回」则切回。';
+export const FEISHU_PAIRING_SUCCESS_GUIDE = '配对成功！已自动保存本会话，下次在 AI 编辑器（Cursor/Claude Code/Codex）里你只要说「切换到飞书」「切到飞书」或「离开一会」，就可以把对话切到这里继续和青鸟对话。会话结束时，点击消息下方的「结束会话」按钮即可。';
 
 // 文件名
 export const CHANNEL_FILE = 'message-bridge-channel.json';

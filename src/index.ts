@@ -5,6 +5,8 @@
 
 import * as lark from "@larksuiteoapi/node-sdk";
 import { loadFeishuConfig } from "./config/loader";
+import { createInteractiveCard, createTextMessage } from "./utils/card";
+import { registerCardActionHandler } from "./utils/card-handler";
 
 export interface NotifyParams {
   message: string;
@@ -28,6 +30,7 @@ export interface SendParams {
   platform?: string;
   userId?: string;
   groupId?: string;
+  useInteractiveCard?: boolean; // 是否使用交互式卡片
 }
 
 export interface SendResult {
@@ -172,6 +175,9 @@ export async function init(): Promise<void> {
     },
   });
 
+  // 注册卡片交互处理器
+  registerCardActionHandler(eventDispatcher);
+
   wsClient = new lark.WSClient({
     appId: config.appId,
     appSecret: config.appSecret,
@@ -257,7 +263,7 @@ export async function notify(params: NotifyParams): Promise<NotifyResult> {
 }
 
 export async function send(params: SendParams): Promise<SendResult> {
-  const { message, platform = "feishu", userId, groupId } = params;
+  const { message, platform = "feishu", userId, groupId, useInteractiveCard = false } = params;
 
   await init();
 
@@ -265,14 +271,19 @@ export async function send(params: SendParams): Promise<SendResult> {
     const config = getConfigValues();
     const targetId = groupId || config.chatId || userId || "";
     const receiveIdType = groupId || config.chatId ? "chat_id" : "open_id";
-    process.stderr.write(`[MessageBridge] 发送消息 (${receiveIdType}): ${message}\n`);
+
+    // 只在明确指定时才使用交互式卡片
+    const msgType = useInteractiveCard ? "interactive" : "text";
+    const content = useInteractiveCard ? createInteractiveCard(message) : createTextMessage(message);
+
+    process.stderr.write(`[MessageBridge] 发送消息 (${receiveIdType}, ${msgType}): ${message}\n`);
 
     const res = await httpClient!.im.message.create({
       params: { receive_id_type: receiveIdType },
       data: {
         receive_id: targetId,
-        msg_type: "text",
-        content: JSON.stringify({ text: message }),
+        msg_type: msgType,
+        content: content,
       },
     });
 

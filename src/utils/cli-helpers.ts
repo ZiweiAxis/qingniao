@@ -7,13 +7,18 @@ import * as fs from 'fs';
 import { DEFAULT_TIMEOUT_SEC, MAX_SAFE_TIMEOUT_SEC } from '../utils/constants';
 
 /**
- * 从某目录向上查找包含 .cursor 的目录（项目根）
+ * 从某目录向上查找包含 IDE 配置目录的项目根
+ * 支持 .cursor、.claude、.codex 等
  */
 export function findCursorRoot(startDir: string): string | null {
   let dir = path.resolve(startDir);
+  const ideMarkers = ['.cursor', '.claude', '.codex'];
+
   while (dir && dir !== path.dirname(dir)) {
-    if (fs.existsSync(path.join(dir, '.cursor'))) {
-      return dir;
+    for (const marker of ideMarkers) {
+      if (fs.existsSync(path.join(dir, marker))) {
+        return dir;
+      }
     }
     dir = path.dirname(dir);
   }

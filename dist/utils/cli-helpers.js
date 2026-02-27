@@ -47,13 +47,17 @@ const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
 const constants_1 = require("../utils/constants");
 /**
- * 从某目录向上查找包含 .cursor 的目录（项目根）
+ * 从某目录向上查找包含 IDE 配置目录的项目根
+ * 支持 .cursor、.claude、.codex 等
  */
 function findCursorRoot(startDir) {
     let dir = path.resolve(startDir);
+    const ideMarkers = ['.cursor', '.claude', '.codex'];
     while (dir && dir !== path.dirname(dir)) {
-        if (fs.existsSync(path.join(dir, '.cursor'))) {
-            return dir;
+        for (const marker of ideMarkers) {
+            if (fs.existsSync(path.join(dir, marker))) {
+                return dir;
+            }
         }
         dir = path.dirname(dir);
     }

@@ -22,6 +22,7 @@ export interface SendParams {
     platform?: string;
     userId?: string;
     groupId?: string;
+    useInteractiveCard?: boolean;
 }
 export interface SendResult {
     success: boolean;

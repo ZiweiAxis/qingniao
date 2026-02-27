@@ -28,8 +28,8 @@ qingniao (青鸟) - AI 智能体的消息桥梁
   npx @zwa/qingniao session close           结束会话并清理
 
 Hooks:
-  npx @zwa/qingniao hook register           注册 Cursor stop hook
-  npx @zwa/qingniao hook unregister         移除 Cursor stop hook
+  npx @zwa/qingniao hook register           注册 AI 编辑器 stop hook（Cursor/Claude Code）
+  npx @zwa/qingniao hook unregister         移除 AI 编辑器 stop hook
 
 选项:
   --timeout=N                               设置超时时间（秒）

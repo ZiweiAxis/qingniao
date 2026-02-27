@@ -2,7 +2,8 @@
  * CLI 辅助函数
  */
 /**
- * 从某目录向上查找包含 .cursor 的目录（项目根）
+ * 从某目录向上查找包含 IDE 配置目录的项目根
+ * 支持 .cursor、.claude、.codex 等
  */
 export declare function findCursorRoot(startDir: string): string | null;
 /**
