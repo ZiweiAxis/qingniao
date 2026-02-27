@@ -1,6 +1,6 @@
 {
     "name": "@zwa/qingniao",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "description": "AI 智能体的消息桥梁，连接飞书/钉钉/企微，实现异步通知与确认",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
