@@ -47,28 +47,18 @@ exports.send = send;
 exports.close = close;
 exports.runConnectMode = runConnectMode;
 const lark = __importStar(require("@larksuiteoapi/node-sdk"));
-const path = __importStar(require("path"));
-const fs = __importStar(require("fs"));
-const os = __importStar(require("os"));
-function loadConfigFromFile() {
-    const configPath = path.join(os.homedir(), ".message-bridge", "config.json");
-    try {
-        const raw = fs.readFileSync(configPath, "utf8");
-        const data = JSON.parse(raw);
-        return data.feishu || {};
-    }
-    catch {
-        return {};
-    }
+const loader_1 = require("./config/loader");
+// 使用新的配置加载器
+function getConfigValues() {
+    const config = (0, loader_1.loadFeishuConfig)();
+    return {
+        appId: config.appId || "",
+        appSecret: config.appSecret || "",
+        chatId: config.chatId || "",
+    };
 }
-const fileCfg = loadConfigFromFile();
-const config = {
-    appId: process.env.FEISHU_APP_ID || process.env.DITING_FEISHU_APP_ID || fileCfg.appId || "",
-    appSecret: process.env.FEISHU_APP_SECRET || process.env.DITING_FEISHU_APP_SECRET || fileCfg.appSecret || "",
-    chatId: process.env.FEISHU_CHAT_ID || process.env.DITING_FEISHU_CHAT_ID || fileCfg.chatId || "",
-};
 function getConfig() {
-    return { ...config };
+    return getConfigValues();
 }
 let firstMessageResolver = null;
 function setFirstMessageResolver(resolver) {
@@ -106,6 +96,7 @@ async function init() {
     if (isInitialized)
         return;
     process.stderr.write("[MessageBridge] 初始化...\n");
+    const config = getConfigValues();
     httpClient = new lark.Client({
         appId: config.appId,
         appSecret: config.appSecret,
@@ -191,6 +182,7 @@ async function notify(params) {
     };
     pendingTasks.set(taskId, task);
     try {
+        const config = getConfigValues();
         const targetId = groupId || config.chatId || userId || "";
         const receiveIdType = groupId || config.chatId ? "chat_id" : "open_id";
         process.stderr.write(`[MessageBridge] 发送消息 (${receiveIdType}): ${message}\n`);
@@ -239,6 +231,7 @@ async function send(params) {
     const { message, platform = "feishu", userId, groupId } = params;
     await init();
     try {
+        const config = getConfigValues();
         const targetId = groupId || config.chatId || userId || "";
         const receiveIdType = groupId || config.chatId ? "chat_id" : "open_id";
         process.stderr.write(`[MessageBridge] 发送消息 (${receiveIdType}): ${message}\n`);
