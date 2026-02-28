@@ -1,7 +1,7 @@
 # MessageBridge（青鸟）
 
 <p align="center">
-  <img src="./docs/banner.png" alt="青鸟 Banner" width="600" />
+  <img src="./docs/banner.webp" alt="青鸟 Banner" width="600" />
 </p>
 
 <p align="center">
