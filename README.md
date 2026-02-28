@@ -20,6 +20,8 @@
 
 让 AI Agent 能够「发消息→等人回复→继续执行」，实现真正的人机协作闭环。
 
+> 青鸟传信，AI 会话无缝跨 IM：代码里开的头，飞书 / 钉钉 / Telegram 接着聊
+
 <p align="center">
   <img src="./docs/demo.gif" alt="Demo 演示" />
 </p>
