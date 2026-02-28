@@ -1,6 +1,26 @@
 # MessageBridge（青鸟）
 
+<p align="center">
+  <img src="./docs/logo.png" alt="青鸟 Logo" width="200" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/hulk-yin/message-bridge/stargazers">
+    <img src="https://img.shields.io/github/stars/hulk-yin/message-bridge?style=social" alt="Stars">
+  </a>
+  <a href="https://www.npmjs.com/package/@zwa/qingniao">
+    <img src="https://img.shields.io/npm/v/@zwa/qingniao" alt="NPM Version">
+  </a>
+  <a href="./LICENSE">
+    <img src="https://img.shields.io/npm/l/@zwa/qingniao" alt="License">
+  </a>
+</p>
+
+---
+
 AI 智能体的多渠道消息桥梁，实现「发消息」与「等回复」，支持与 AI 对话闭环。**对外可称「青鸟」**。当前已实现飞书；钉钉、企微等欢迎社区共建。
+
+⭐ **如果这个项目对你有帮助，欢迎点个 Star！**
 
 A multi-channel message bridge for AI agents: send messages and wait for replies. **Feishu is implemented; DingTalk, WeCom, etc. welcome community contributions.**
 
