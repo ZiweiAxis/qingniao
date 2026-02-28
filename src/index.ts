@@ -121,8 +121,9 @@ export async function init(): Promise<void> {
 
   eventDispatcher = new lark.EventDispatcher({}).register({
     "im.message.receive_v1": async (data: { message: Record<string, unknown> }) => {
+      process.stderr.write("[MessageBridge] [WS] 收到 im.message.receive_v1 事件\n");
       const message = data.message as {
-        content: string;
+        content: string | Record<string, unknown>;
         sender?: { sender_id?: { open_id?: string; user_id?: string } };
         chat_id?: string;
         chat?: { chat_id?: string };
@@ -130,9 +131,21 @@ export async function init(): Promise<void> {
         create_time?: string | number;
       };
       try {
-        const content = JSON.parse(message.content) as { text?: string };
+        let text = "";
+        if (message.content != null) {
+          const raw = message.content;
+          if (typeof raw === "string") {
+            try {
+              const content = JSON.parse(raw) as { text?: string };
+              text = content?.text ?? "";
+            } catch {
+              text = raw;
+            }
+          } else if (typeof raw === "object" && raw !== null && "text" in raw) {
+            text = String((raw as { text?: string }).text ?? "");
+          }
+        }
         const senderId = message.sender?.sender_id?.open_id || message.sender?.sender_id?.user_id || "unknown";
-        const text = content.text || "";
         const createTime = message.create_time != null ? Number(message.create_time) : null;
         const createTimeMs =
           createTime != null && !Number.isNaN(createTime)
@@ -142,6 +155,7 @@ export async function init(): Promise<void> {
             : null;
         process.stderr.write(`[MessageBridge] 收到消息: ${text} (from ${senderId})\n`);
 
+        let resolved = false;
         for (const [, task] of pendingTasks.entries()) {
           if (task.status !== "pending") continue;
           // 过滤重连/重放：每次 notify 是新进程、新 WS 连接，飞书可能对新连接重放最近事件，导致同一条用户回复被算两次；仅接受「本次发送之后」的消息（create_time >= sentAt - 2s）
@@ -157,7 +171,11 @@ export async function init(): Promise<void> {
           task.repliedAt = new Date();
           if (task.resolve) task.resolve(task);
           process.stderr.write(`[MessageBridge] 任务 ${task.taskId} 已解决\n`);
+          resolved = true;
           break;
+        }
+        if (!resolved && pendingTasks.size > 0) {
+          process.stderr.write("[MessageBridge] 消息已收到但未匹配到待处理任务（可能被时间过滤）\n");
         }
 
         const chatId = message.chat_id || (message.chat && message.chat.chat_id) || (data as { chat_id?: string }).chat_id;
@@ -219,6 +237,9 @@ export async function notify(params: NotifyParams): Promise<NotifyResult> {
     const receiveIdType = groupId || config.chatId ? "chat_id" : "open_id";
     process.stderr.write(`[MessageBridge] 发送消息 (${receiveIdType}): ${message}\n`);
 
+    // 在发起请求前记录发送时间，避免 HTTP 返回延迟导致用户首次回复的 create_time 早于 sentAtMs 被误过滤（第一次收不到、第二次才能收到）
+    task.sentAtMs = Date.now();
+
     const res = await httpClient!.im.message.create({
       params: { receive_id_type: receiveIdType },
       data: {
@@ -230,8 +251,11 @@ export async function notify(params: NotifyParams): Promise<NotifyResult> {
 
     if (res.code !== 0) throw new Error(`发送失败: ${res.msg}`);
     const mid = (res as { data?: { message_id?: string } }).data?.message_id ?? "";
-    task.sentAtMs = Date.now();
     process.stderr.write(`[MessageBridge] 消息已发送: ${mid}\n`);
+    process.stderr.write("[MessageBridge] 等待飞书回复（在飞书里发消息后终端会立即有反应）...\n");
+    process.stderr.write(
+      "[MessageBridge] 若回复后终端无反应：1) 飞书后台→事件订阅→长连接+im.message.receive_v1；2) 同一应用只生效一条长连接，请勿同时开多个等待回复的进程\n"
+    );
 
     const result = await new Promise<PendingTask>((resolve, reject) => {
       task.resolve = resolve;
@@ -297,7 +321,19 @@ export async function send(params: SendParams): Promise<SendResult> {
 }
 
 export function close(): void {
-  if (wsClient) process.stderr.write("[MessageBridge] 关闭连接\n");
+  if (wsClient) {
+    process.stderr.write("[MessageBridge] 关闭连接\n");
+    try {
+      wsClient.close({ force: true });
+    } catch {
+      // ignore close errors
+    }
+    wsClient = null;
+  }
+  if (httpClient) {
+    httpClient = null;
+  }
+  eventDispatcher = null;
   isInitialized = false;
 }
 

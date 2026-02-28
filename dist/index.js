@@ -107,11 +107,26 @@ async function init() {
     });
     eventDispatcher = new lark.EventDispatcher({}).register({
         "im.message.receive_v1": async (data) => {
+            process.stderr.write("[MessageBridge] [WS] 收到 im.message.receive_v1 事件\n");
             const message = data.message;
             try {
-                const content = JSON.parse(message.content);
+                let text = "";
+                if (message.content != null) {
+                    const raw = message.content;
+                    if (typeof raw === "string") {
+                        try {
+                            const content = JSON.parse(raw);
+                            text = content?.text ?? "";
+                        }
+                        catch {
+                            text = raw;
+                        }
+                    }
+                    else if (typeof raw === "object" && raw !== null && "text" in raw) {
+                        text = String(raw.text ?? "");
+                    }
+                }
                 const senderId = message.sender?.sender_id?.open_id || message.sender?.sender_id?.user_id || "unknown";
-                const text = content.text || "";
                 const createTime = message.create_time != null ? Number(message.create_time) : null;
                 const createTimeMs = createTime != null && !Number.isNaN(createTime)
                     ? createTime > 1e12
@@ -119,6 +134,7 @@ async function init() {
                         : createTime * 1000
                     : null;
                 process.stderr.write(`[MessageBridge] 收到消息: ${text} (from ${senderId})\n`);
+                let resolved = false;
                 for (const [, task] of pendingTasks.entries()) {
                     if (task.status !== "pending")
                         continue;
@@ -136,7 +152,11 @@ async function init() {
                     if (task.resolve)
                         task.resolve(task);
                     process.stderr.write(`[MessageBridge] 任务 ${task.taskId} 已解决\n`);
+                    resolved = true;
                     break;
+                }
+                if (!resolved && pendingTasks.size > 0) {
+                    process.stderr.write("[MessageBridge] 消息已收到但未匹配到待处理任务（可能被时间过滤）\n");
                 }
                 const chatId = message.chat_id || (message.chat && message.chat.chat_id) || data.chat_id;
                 if (firstMessageResolver && chatId) {
@@ -190,6 +210,8 @@ async function notify(params) {
         const targetId = groupId || config.chatId || userId || "";
         const receiveIdType = groupId || config.chatId ? "chat_id" : "open_id";
         process.stderr.write(`[MessageBridge] 发送消息 (${receiveIdType}): ${message}\n`);
+        // 在发起请求前记录发送时间，避免 HTTP 返回延迟导致用户首次回复的 create_time 早于 sentAtMs 被误过滤（第一次收不到、第二次才能收到）
+        task.sentAtMs = Date.now();
         const res = await httpClient.im.message.create({
             params: { receive_id_type: receiveIdType },
             data: {
@@ -201,8 +223,9 @@ async function notify(params) {
         if (res.code !== 0)
             throw new Error(`发送失败: ${res.msg}`);
         const mid = res.data?.message_id ?? "";
-        task.sentAtMs = Date.now();
         process.stderr.write(`[MessageBridge] 消息已发送: ${mid}\n`);
+        process.stderr.write("[MessageBridge] 等待飞书回复（在飞书里发消息后终端会立即有反应）...\n");
+        process.stderr.write("[MessageBridge] 若回复后终端无反应：1) 飞书后台→事件订阅→长连接+im.message.receive_v1；2) 同一应用只生效一条长连接，请勿同时开多个等待回复的进程\n");
         const result = await new Promise((resolve, reject) => {
             task.resolve = resolve;
             task.reject = reject;
@@ -261,8 +284,20 @@ async function send(params) {
     }
 }
 function close() {
-    if (wsClient)
+    if (wsClient) {
         process.stderr.write("[MessageBridge] 关闭连接\n");
+        try {
+            wsClient.close({ force: true });
+        }
+        catch {
+            // ignore close errors
+        }
+        wsClient = null;
+    }
+    if (httpClient) {
+        httpClient = null;
+    }
+    eventDispatcher = null;
     isInitialized = false;
 }
 function runConnectMode() {
