@@ -1,12 +1,12 @@
 # MessageBridge（青鸟）
 
 <p align="center">
-  <img src="./docs/logo.png" alt="青鸟 Logo" width="200" />
+  <img src="./docs/banner.png" alt="青鸟 Banner" width="600" />
 </p>
 
 <p align="center">
-  <a href="https://github.com/hulk-yin/message-bridge/stargazers">
-    <img src="https://img.shields.io/github/stars/hulk-yin/message-bridge?style=social" alt="Stars">
+  <a href="https://github.com/ZiweiAxis/qingniao/stargazers">
+    <img src="https://img.shields.io/github/stars/ZiweiAxis/qingniao?style=social" alt="Stars">
   </a>
   <a href="https://www.npmjs.com/package/@zwa/qingniao">
     <img src="https://img.shields.io/npm/v/@zwa/qingniao" alt="NPM Version">
